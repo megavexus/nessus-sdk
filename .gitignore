@@ -1,0 +1,3 @@
+venv
+config/nessus_conf.ini
+*nessus*.ini

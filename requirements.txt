@@ -1,0 +1,4 @@
+nessrest
+requests
+click
+configparser
