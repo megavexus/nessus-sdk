@@ -185,7 +185,18 @@ class Scanner(NessusScanner):
         if scan_id == None:
             scan_id = self.scan_id
         self.action(action="scans/" + str(scan_id) + "/stop", method="POST")
+        return self.res
         
+
+    def scan_pause(self, scan_id=None):
+        '''
+        Start the scan and save the UUID to query the status
+        '''
+        if scan_id == None:
+            scan_id = self.scan_id
+        self.action(action="scans/" + str(scan_id) + "/pause", method="POST")
+        return self.res
+
 
     def scan_list_from_folder(self, folder_id):
         '''

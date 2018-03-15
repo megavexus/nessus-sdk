@@ -22,10 +22,10 @@ def stop_scan(folder_id):
 
     for scan in scan_list:
         if str(scan[u'status']) == "running":
-            print("  - [!] Running Scan [#{}] {}. Stopping...".format(
+            print("  - [!] Running Scan [#{}] {}. Pausing...".format(
                 scan[u'id'], scan[u'name']))
-            scanner.scan_stop(scan[u'id'])
-            print("  ....SCAN STOPPED")
+            scanner.scan_pause(scan[u'id'])
+            print("  ....SCAN PAUSED")
         else:
             print("  - Scan [#{}] {}: STATUS = {}".format(
                 scan[u'status'], scan[u'id'], scan[u'name']))
