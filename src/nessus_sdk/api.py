@@ -5,7 +5,15 @@ import json
 import requests
 import atexit
 import os
+import urllib3
 
+
+class WrongCredentialsException(Exception):
+    """Exception thrown when wrong credentials are given"""
+
+
+class BadLoginException(Exception):
+    """Exception thrown when wrong user/pass are given"""
 
 class Scanner(NessusScanner):
 
@@ -63,7 +71,7 @@ class Scanner(NessusScanner):
         self.host_ids = {}
 
         if insecure and hasattr(requests, 'packages'):
-            requests.packages.urllib3.disable_warnings()
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         if (api_akey and api_skey):
             self.api_akey = api_akey
@@ -71,13 +79,18 @@ class Scanner(NessusScanner):
             self.use_api = True
         else:
             # Initial login to get our token for all subsequent transactions
-            self._login(login, password)
-
-            # Register a call to the logout action automatically
-            atexit.register(self.action, action="session",
-                            method="DELETE", retry=False)
-
-        self._get_permissions()
+            try:
+                self._login(login, password)
+            
+                # Register a call to the logout action automatically
+                atexit.register(self.action, action="session",
+                                method="DELETE", retry=False)
+            except SystemExit:
+                raise BadLoginException("Bad login data")
+        try:
+            self._get_permissions()
+        except KeyError:
+            raise WrongCredentialsException("Wrong Secret Key Given")
         self._get_scanner_id()
 
 
@@ -173,19 +186,79 @@ class Scanner(NessusScanner):
 
         if self.res and "error" in self.res and retry:
             if self.res["error"] == "You need to log in to perform this request" or self.res["error"] == "Invalid Credentials":
-                self._login()
-                self.action(action=action, method=method, extra=extra, files=files,
-                            json_req=json_req, download=download, private=private,
-                            retry=False)
+                try:
+                    self._login()
+                    self.action(action=action, method=method, extra=extra, files=files,
+                                json_req=json_req, download=download, private=private,
+                                retry=False)
+                except IndexError:
+                    raise WrongCredentialsException("Bad Access Key Given")
+
+
+    def scan_create(self, targets, policy_name, folder_name, scan_name="", scan_id="", description=""):
+        """
+        Crea un scan con las opciones de policy indicadas.
+        Si se policy_options policy_name, lo cogerá si existe.
+        """
+        if scan_id == "" and scan_name == "":
+            raise KeyError("No scan id or name were given")
+
+        self._scan_tag(folder_name)
+        if description != "":
+            self.description = description
+        policy_exists = self.policy_exists(policy_name)
+        if policy_exists == False:
+            raise KeyError("The policy {} doesnt exists".format(policy_name))
+
+        if scan_id != "":
+            # Tiene scan_id, asi que asume que existe
+            self.scan_id = scan_id
+            self.scan_update_targets(targets)
+            return self.scan_id
+        else:
+            scan_exists = self.scan_exists(scan_name)
+            if scan_exists:
+                self.scan_update_targets(targets)
+                return self.scan_id
+
+            self.scan_add(targets, name=scan_name)
+            return self.scan_id
+
+
+    def scan_run(self, scan_id = None):
+        """
+        Start the scan and save the UUID to query the status
+        """
+        if scan_id == None:
+            scan_id = self.scan_id
+
+        self.action(action="scans/" + str(scan_id) + "/launch", method="POST")
+        self.scan_inspect(scan_id = scan_id)
+        return self.res['info']
+
+    def scan_delete(self, scan_id=None):
+        """
+        Start the scan and save the UUID to query the status
+        """
+        if scan_id == None:
+            scan_id = self.scan_id
+
+        self.action(action="scans/" + str(scan_id) , method="DELETE")
+        if 'error' in self.res:
+            return self.res
+        else:
+            return True
+
 
     def scan_stop(self, scan_id=None):
         '''
-        Start the scan and save the UUID to query the status
+        Stop the scan and save the UUID to query the status
         '''
         if scan_id == None:
             scan_id = self.scan_id
-        self.action(action="scans/" + str(scan_id) + "/stop", method="POST")
-        return self.res
+
+        self.action(action="scans/" + str(self.scan_id) + "/launch", method="POST")
+        self.scan_uuid = self.res["scan_uuid"]
         
 
     def scan_pause(self, scan_id=None):
@@ -203,14 +276,41 @@ class Scanner(NessusScanner):
         Fetch a list with scans from a specified folder
         '''
         self.scan_list()
-        scans = self.res[u'scans']
+        scans = self.res['scans']
 
         self.res = []
         for scan in scans:
-            if str(scan[u'folder_id']) == str(folder_id):
+            if str(scan['folder_id']) == str(folder_id):
                 self.res.append(scan)
 
         return self.res
+
+    def scan_inspect(self, scan_id=None, scan_name=None):
+        """
+        Fetch the details of the requested scan
+        """
+        if scan_id != None:
+            self.action(action="scans/" + str(scan_id), method="GET")
+        elif scan_name != None:
+            self.scan_details(scan_name)
+        else: 
+            return None
+        if 'error' in self.res:
+            raise KeyError(self.res['error'])
+        return self.res
+
+    
+    def scan_status(self, scan_id=None, scan_name=None):
+        info = self.scan_inspect(scan_id, scan_name)
+        return info['info']['status']
+
+
+    def get_running_scanners(self):
+        """
+        TODO:
+        Returns a list with the scanners running right now
+        """
+        pass
 
 
 if __name__ == "__main__":
@@ -222,19 +322,20 @@ if __name__ == "__main__":
     #password = "Disma$020"
     password = "1234"
     insecure = True
-    scan_class = Scanner(url=host, login=user, password=password, insecure=insecure)
+    scan_class = Scanner(url=host, login=user,
+                         password=password, insecure=insecure)
     
     #scan_list = scan.scan_list_from_folder("1089")
     scan_list = scan_class.scan_list_from_folder("5")
     for scan in scan_list:
-        if str(scan[u'status']) == "running":
+        if str(scan['status']) == "running":
             print("[!] Running Scan [#{}] {}. Stopping...".format(
-                scan[u'id'], scan[u'name']))
-            scan_class.scan_stop(scan[u'id'])
+                scan['id'], scan['name']))
+            scan_class.scan_stop(scan['id'])
             print("....SCAN STOPPED")
         else:
             print(" - Scan [#{}] {}: STATUS = {}".format(
-                scan[u'status'], scan[u'id'], scan[u'name']))
-    #for scan in scan_list[u'scans']:
+                scan['status'], scan['id'], scan['name']))
+    #for scan in scan_list['scans']:
 
     #    print("{}".format(scan))
