@@ -6,3 +6,4 @@ config/nessus_conf.ini
 *.pytest_cache
 __pycache__
 *.egg-info
+*.pyc

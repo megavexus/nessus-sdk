@@ -1,8 +1,9 @@
 import pytest
 import configparser
 import os
+import time
 from nessus_sdk import Scanner
-from nessus_sdk.api import WrongCredentialsException, BadLoginException
+from nessus_sdk.exceptions import WrongCredentialsException, BadLoginException
 
 
 @pytest.fixture()
@@ -99,8 +100,7 @@ def test_start_scanner(nessus_scanner):
     name = "Pytest Prueba SDK"
     description = "Pytest Prueba SDK"
 
-    scan_id = nessus_scanner.scan_create(
-        targets, policy, folder_name, scan_name=name, description=description)
+    scan_id = nessus_scanner.scan_create_from_name(name, targets, policy, folder_name, description=description)
     assert type(scan_id) == int
 
 
@@ -112,8 +112,7 @@ def created_scanner_id(nessus_scanner):
     name = "Pytest Prueba SDK"
     description = "Pytest Prueba SDK"
 
-    scan_id = nessus_scanner.scan_create(
-        targets, policy, folder_name, scan_name=name, description=description)
+    scan_id = nessus_scanner.scan_create_from_name(name, targets, policy, folder_name, description=description)
     return scan_id
 
 
@@ -129,8 +128,11 @@ def test_get_scan_status(nessus_scanner, created_scanner_id):
 
 
 def test_run_scanner(nessus_scanner, created_scanner_id):
-    scan_info = nessus_scanner.scan_run(scan_id=created_scanner_id)
-    assert scan_info['status'] == "running"
+    scan_uuid = nessus_scanner.scan_run(scan_id=created_scanner_id)
+    assert type(scan_uuid) == str
+    scan_info = nessus_scanner.scan_inspect(scan_id=created_scanner_id)
+    assert scan_info['info']['status'] == "running"
+    assert scan_info['info']['uuid'] == scan_uuid
 
 
 def test_delete_scanner(nessus_scanner):
@@ -140,8 +142,7 @@ def test_delete_scanner(nessus_scanner):
     name = "Pytest Delete Test"
     description = "Pytest Delete test"
 
-    scan_id = nessus_scanner.scan_create(
-        targets, policy, folder_name, scan_name=name, description=description)
+    scan_id = nessus_scanner.scan_create_from_name(name, targets, policy, folder_name, description=description)
 
     nessus_scanner.scan_delete(scan_id=scan_id)
     with pytest.raises(KeyError) as ex:
@@ -149,14 +150,44 @@ def test_delete_scanner(nessus_scanner):
         str(ex) == "The requested file was not found"
 
 
-def test_stop_scanner():
-    pass
+def test_stop_scanner(nessus_scanner, created_scanner_id):
+    scan_uuid = nessus_scanner.scan_run(created_scanner_id)
+    scan_info = nessus_scanner.scan_inspect(created_scanner_id)
+    assert scan_info['info']['status'] == "running"
 
+    scan_uuid = nessus_scanner.scan_stop(created_scanner_id)
+    scan_info = nessus_scanner.scan_inspect(created_scanner_id)
+    assert scan_info['info']['status'] == "stopping"
+    assert scan_info['info']['uuid'] == scan_uuid
 
-def test_pause_scanner():
-    pass
+    time.sleep(5)
+    scan_info = nessus_scanner.scan_inspect(created_scanner_id)
+    assert scan_info['info']['status'] == "canceled"
 
-###
+@pytest.mark.slow
+def test_pause_scanner(nessus_scanner, created_scanner_id):
+    scan_info = nessus_scanner.scan_inspect(created_scanner_id)
+    targets = scan_info['info']['targets']
+    # Le metemos mas hosts para que no se complete antes de pararse
+    targets = targets + ",127.0.0.1,localhost,10.229.214.132/24"
+    nessus_scanner.update_targets(created_scanner_id,targets)
+
+    scan_uuid = nessus_scanner.scan_run(created_scanner_id)
+    scan_info = nessus_scanner.scan_inspect(created_scanner_id)
+    assert scan_info['info']['status'] == "running"
+    
+    scan_uuid = nessus_scanner.scan_pause(created_scanner_id)
+    
+    scan_info = nessus_scanner.scan_inspect(created_scanner_id)
+    assert scan_info['info']['status'] in ["pausing", "paused"]
+    assert scan_info['info']['uuid'] == scan_uuid
+    
+    time.sleep(10)
+    scan_info = nessus_scanner.scan_inspect(created_scanner_id)
+    assert scan_info['info']['status'] == "paused"
+
+    #borra el scan antes de salir
+    nessus_scanner.scan_delete(scan_id=created_scanner_id)
 
 
 def test_get_result_scan():

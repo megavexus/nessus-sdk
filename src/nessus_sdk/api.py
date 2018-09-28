@@ -1,308 +1,132 @@
 # -*- coding: utf-8 -*-
 
-from nessrest.ness6rest import Scanner as NessusScanner, SSLException
-import json
-import requests
-import atexit
-import os
-import urllib3
+from .nessrest import NessusScanner
+
+class Scanner(object):
+
+    def __init__(self, url, login='', password='', api_akey='', api_skey='', insecure=False, bypass_proxy=False):
+        self.scan_api = NessusScanner(
+            url=url, 
+            login=login, 
+            password=password, 
+            api_akey=api_akey,
+            api_skey=api_skey, 
+            insecure=insecure, 
+            bypass_proxy=bypass_proxy
+        )
+
+    def scan_list(self):
+        return self.scan_api.scan_list()
+
+    def search_scan_id(self, scan_name):
+        scan_exists = self.scan_api.scan_exists(scan_name)
+        return self.scan_api.scan_id if scan_exists else None
 
 
-class WrongCredentialsException(Exception):
-    """Exception thrown when wrong credentials are given"""
+    def update_targets(self, scan_id, targets):
+        self.scan_api.scan_id = scan_id
+        self.scan_api.scan_update_targets(targets)
+        return scan_id
 
 
-class BadLoginException(Exception):
-    """Exception thrown when wrong user/pass are given"""
-
-class Scanner(NessusScanner):
-
-    def __init__(self, url, login='', password='', api_akey='', api_skey='',
-                 insecure=False, ca_bundle='', bypass_proxy=False):
-        self.bypass_proxy = bypass_proxy
-        self.api_akey = None
-        self.api_skey = None
-        self.use_api = False
-        self.name = ''
-        self.policy_name = ''
-        self.debug = False
-        self.format = ''
-        self.format_start = ''
-        self.format_end = ''
-        self.http_response = ''
-        self.plugins = {}
-        self.names = {}
-        self.files = {}
-        self.cisco_offline_configs = ''
-        self.permissions = ''
-        self.policy_id = ''
-        self.policy_object = ''
-        self.pref_cgi = ''
-        self.pref_paranoid = ''
-        self.pref_supplied = ''
-        self.pref_thorough = ''
-        self.pref_max_checks = ''
-        self.pref_receive_timeout = ''
-        self.set_safe_checks = ''
-        self.pref_verbose = ''
-        self.pref_silent_dependencies = ''
-        self.res = {}
-        self.scan_id = ''
-        self.scan_name = ''
-        self.scan_template_uuid = ''
-        self.scan_uuid = ''
-        self.tag_id = ''
-        self.tag_name = ''
-        self.targets = ''
-        self.policy_template_uuid = ''
-        self.token = ''
-        self.url = url
-        self.ver_feed = ''
-        self.ver_gui = ''
-        self.ver_plugins = ''
-        self.ver_svr = ''
-        self.ver_web = ''
-        self.ca_bundle = ca_bundle
-        self.insecure = insecure
-        self.auth = []
-        self.host_vulns = {}
-        self.plugin_output = {}
-        self.host_details = {}
-        self.host_ids = {}
-
-        if insecure and hasattr(requests, 'packages'):
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-        if (api_akey and api_skey):
-            self.api_akey = api_akey
-            self.api_skey = api_skey
-            self.use_api = True
+    def scan_create_from_name(self,  scan_name, targets, policy_name, folder_name, description=""):
+        scan_id = self.search_scan_id(scan_name)
+        if scan_id == None:
+            self._set_scan_metadata(policy_name, folder_name, description)
+            self.scan_api.scan_add(targets, name=scan_name)
+            return self.scan_api.scan_id
         else:
-            # Initial login to get our token for all subsequent transactions
-            try:
-                self._login(login, password)
-            
-                # Register a call to the logout action automatically
-                atexit.register(self.action, action="session",
-                                method="DELETE", retry=False)
-            except SystemExit:
-                raise BadLoginException("Bad login data")
-        try:
-            self._get_permissions()
-        except KeyError:
-            raise WrongCredentialsException("Wrong Secret Key Given")
-        self._get_scanner_id()
+            return self.scan_create(scan_id, targets, policy_name, folder_name, description)
 
-
-    def action(self, action, method, extra={}, files={}, json_req=True, download=False, private=False, retry=True):
-        '''
-        Generic actions for REST interface. The json_req may be unneeded, but
-        the plugin searching functionality does not use a JSON-esque request.
-        This is a backup setting to be able to change content types on the fly.
-        '''
-        payload = {}
-        payload.update(extra)
-        if self.use_api:
-            headers = {'X-ApiKeys': 'accessKey=' + self.api_akey +
-                       '; secretKey=' + self.api_skey}
-        else:
-            headers = {'X-Cookie': 'token=' + str(self.token)}
-
-        if json_req:
-            headers.update({'Content-type': 'application/json',
-                            'Accept': 'text/plain'})
-            payload = json.dumps(payload)
-
-        url = "%s/%s" % (self.url, action)
-        if self.debug:
-            if private:
-                print("JSON    : **JSON request hidden**")
-            else:
-                print("JSON    :")
-                print(payload)
-
-            print("HEADERS :")
-            print(headers)
-            print("URL     : %s " % url)
-            print("METHOD  : %s" % method)
-            print("\n")
-
-        # Figure out if we should verify SSL connection (possibly with a user
-        # supplied CA bundle). Default to true.
-        if self.insecure:
-            verify = False
-        elif self.ca_bundle:
-            verify = self.ca_bundle
-        else:
-            verify = True
-
-        try:
-            if self.bypass_proxy:
-                session = requests.Session()
-                session.trust_env = False
-                req = session.request(method, url, data=payload, files=files,
-                                    verify=verify, headers=headers)
-            else:
-                req = requests.request(method, url, data=payload, files=files,
-                                      verify=verify, headers=headers)
-
-            if not download and req.text:
-                self.res = req.json()
-            elif not req.text:
-                self.res = {}
-
-            if req.status_code != 200:
-                print("*****************START ERROR*****************")
-                if private:
-                    print("JSON    : **JSON request hidden**")
-                else:
-                    print("JSON    :")
-                    print(payload)
-                    print(files)
-
-                print("HEADERS :")
-                print(headers)
-                print("URL     : %s " % url)
-                print("METHOD  : %s" % method)
-                print("RESPONSE: %d" % req.status_code)
-                print("\n")
-                self.pretty_print()
-                print("******************END ERROR******************")
-
-            if self.debug:
-                # This could also contain "pretty_print()" but it makes a lot of
-                # noise if enabled for the entire scan.
-                print("RESPONSE CODE: %d" % req.status_code)
-
-            if download:
-                return req.content
-        except requests.exceptions.SSLError as ssl_error:
-            raise SSLException('%s for %s.' % (ssl_error, url))
-        except requests.exceptions.ConnectionError as e:
-            raise Exception("{} {} {} {} {} {} {}".format(
-                method, url, payload, files, verify, headers, str(e)
-            ))
-            raise Exception("Could not connect to %s.\nExiting!\n" % url)
-
-        if self.res and "error" in self.res and retry:
-            if self.res["error"] == "You need to log in to perform this request" or self.res["error"] == "Invalid Credentials":
-                try:
-                    self._login()
-                    self.action(action=action, method=method, extra=extra, files=files,
-                                json_req=json_req, download=download, private=private,
-                                retry=False)
-                except IndexError:
-                    raise WrongCredentialsException("Bad Access Key Given")
-
-
-    def scan_create(self, targets, policy_name, folder_name, scan_name="", scan_id="", description=""):
+    def scan_create(self, scan_id, targets, policy_name, folder_name, description=""):
         """
         Crea un scan con las opciones de policy indicadas.
         Si se policy_options policy_name, lo cogerá si existe.
         """
-        if scan_id == "" and scan_name == "":
-            raise KeyError("No scan id or name were given")
+        self._set_scan_metadata(policy_name, folder_name, description)
+        return self.update_targets(scan_id, targets)
 
-        self._scan_tag(folder_name)
+    def _set_scan_metadata(self, policy_name, folder_name, description):
+        self.scan_api._scan_tag(folder_name)
         if description != "":
-            self.description = description
-        policy_exists = self.policy_exists(policy_name)
+            self.scan_api.description = description
+        policy_exists = self.scan_api.policy_exists(policy_name)
         if policy_exists == False:
             raise KeyError("The policy {} doesnt exists".format(policy_name))
 
-        if scan_id != "":
-            # Tiene scan_id, asi que asume que existe
-            self.scan_id = scan_id
-            self.scan_update_targets(targets)
-            return self.scan_id
-        else:
-            scan_exists = self.scan_exists(scan_name)
-            if scan_exists:
-                self.scan_update_targets(targets)
-                return self.scan_id
 
-            self.scan_add(targets, name=scan_name)
-            return self.scan_id
-
-
-    def scan_run(self, scan_id = None):
+    def scan_delete(self, scan_id):
         """
         Start the scan and save the UUID to query the status
         """
-        if scan_id == None:
-            scan_id = self.scan_id
-
-        self.action(action="scans/" + str(scan_id) + "/launch", method="POST")
-        self.scan_inspect(scan_id = scan_id)
-        return self.res['info']
-
-    def scan_delete(self, scan_id=None):
-        """
-        Start the scan and save the UUID to query the status
-        """
-        if scan_id == None:
-            scan_id = self.scan_id
-
-        self.action(action="scans/" + str(scan_id) , method="DELETE")
-        if 'error' in self.res:
-            return self.res
+        self.scan_api.action(action="scans/{}".format(scan_id) , method="DELETE")
+        if 'error' in self.scan_api.res:
+            return self.scan_api.res
         else:
             return True
 
+    
+    def scan_run(self, scan_id):
+        """
+        Start the scan and save the UUID to query the status
+        """
+        self.scan_api.action(action="scans/{}/launch".format(scan_id), method="POST")
+        scan_info = self.scan_inspect(scan_id = scan_id)
+        return scan_info['info']["uuid"]
 
-    def scan_stop(self, scan_id=None):
+
+    def scan_stop(self, scan_id):
         '''
         Stop the scan and save the UUID to query the status
         '''
-        if scan_id == None:
-            scan_id = self.scan_id
-
-        self.action(action="scans/" + str(self.scan_id) + "/launch", method="POST")
-        self.scan_uuid = self.res["scan_uuid"]
+        self.scan_api.action(action="scans/{}/stop".format(scan_id), method="POST")
+        scan_info = self.scan_inspect(scan_id)
+        return scan_info['info']["uuid"]
         
 
-    def scan_pause(self, scan_id=None):
+    def scan_pause(self, scan_id):
         '''
         Start the scan and save the UUID to query the status
         '''
-        if scan_id == None:
-            scan_id = self.scan_id
-        self.action(action="scans/" + str(scan_id) + "/pause", method="POST")
-        return self.res
+        self.scan_api.action(action="scans/{}/pause".format(scan_id), method="POST")
+        scan_info = self.scan_inspect(scan_id)
+        return scan_info['info']["uuid"]
 
 
     def scan_list_from_folder(self, folder_id):
         '''
         Fetch a list with scans from a specified folder
         '''
-        self.scan_list()
-        scans = self.res['scans']
+        self.scan_api.scan_list()
+        scans = self.scan_api.res['scans']
 
-        self.res = []
+        results = []
         for scan in scans:
             if str(scan['folder_id']) == str(folder_id):
-                self.res.append(scan)
+                results.append(scan)
 
-        return self.res
+        return results
 
     def scan_inspect(self, scan_id=None, scan_name=None):
         """
         Fetch the details of the requested scan
         """
         if scan_id != None:
-            self.action(action="scans/" + str(scan_id), method="GET")
+            self.scan_api.action(action="scans/{}".format(scan_id), method="GET")
         elif scan_name != None:
-            self.scan_details(scan_name)
+            self.scan_api.scan_details(scan_name)
         else: 
             return None
-        if 'error' in self.res:
-            raise KeyError(self.res['error'])
-        return self.res
+
+        if 'error' in self.scan_api.res:
+            raise KeyError(self.scan_api.res['error'])
+
+        return self.scan_api.res
 
     
     def scan_status(self, scan_id=None, scan_name=None):
-        info = self.scan_inspect(scan_id, scan_name)
-        return info['info']['status']
+        scan_info = self.scan_inspect(scan_id, scan_name)
+        return scan_info['info']['status']
 
 
     def get_running_scanners(self):
@@ -313,29 +137,32 @@ class Scanner(NessusScanner):
         pass
 
 
-if __name__ == "__main__":
-    import os
-    os.environ['NO_PROXY'] = '127.0.0.1,localhost,10.139.90.81'
-    #host = "https://10.139.90.81:8834"
-    host = "https://127.0.0.1:8834"
-    user = "admin"
-    #password = "Disma$020"
-    password = "1234"
-    insecure = True
-    scan_class = Scanner(url=host, login=user,
-                         password=password, insecure=insecure)
-    
-    #scan_list = scan.scan_list_from_folder("1089")
-    scan_list = scan_class.scan_list_from_folder("5")
-    for scan in scan_list:
-        if str(scan['status']) == "running":
-            print("[!] Running Scan [#{}] {}. Stopping...".format(
-                scan['id'], scan['name']))
-            scan_class.scan_stop(scan['id'])
-            print("....SCAN STOPPED")
-        else:
-            print(" - Scan [#{}] {}: STATUS = {}".format(
-                scan['status'], scan['id'], scan['name']))
-    #for scan in scan_list['scans']:
+    def get_results(self, scan_id):
+        """
+        self.scan_id = scan_id
+        self.scan_inspect(self.scan_id)
+        if self.scan_api.res['info']['status'] != "completed":
+            return None
+        
+        self._scan_status()
+        
+        results = {}
+        for host in self.scan_api.res["hosts"]:
+            host_dict = {
+                'target': host["hostname"]
+            }
+            if self.format_start:
+                host_dict['format_start'] = self.format_start
 
-    #    print("{}".format(scan))
+            for plugin in self.plugins.keys():
+                self.scan_api.action("scans/{}/hosts/{}/plugins/{}".format(self.scan_id, host["host_id"], plugin), method="GET")
+
+
+
+        # Por cada host:
+            # Coge los plugins
+            # 
+        pass
+        """
+
+
