@@ -4,9 +4,8 @@ import codecs
 import sys
 import os
 myPath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, myPath + '/../../src/NessusApi')
 from time import gmtime, strftime
-from nessusRest import Scanner
+from NessusSDK import NessusSDK
 
 
 @click.command()
@@ -27,8 +26,8 @@ def stop_scan(folder_id):
             scanner.scan_pause(scan[u'id'])
             print("  ....SCAN PAUSED")
         else:
-            print("  - Scan [#{}] {}: STATUS = {}".format(
-                scan[u'status'], scan[u'id'], scan[u'name']))
+            print("  - Scan [#{}] {}: STATUS = {} {}".format(
+                scan[u'status'], scan[u'id'], scan[u'name'], scan))
 
     print("-----")
 
@@ -56,7 +55,13 @@ def getScanner(config_file=""):
     login = config['nessus'].get('login', 'admin')
     password = config['nessus'].get('password', '1234')
     insecure = config['nessus'].get('insecure', 'true') in ['true', 'TRUE', 1, '1']
-    scanner = Scanner(url=host, login=login, password=password, insecure=insecure, bypass_proxy=True)
+    scanner = NessusSDK(
+        url=host, 
+        login=login, 
+        password=password,
+        insecure=insecure, 
+        bypass_proxy=True
+    )
     return scanner
 
 
