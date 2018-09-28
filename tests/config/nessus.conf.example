@@ -1,0 +1,8 @@
+[nessus]
+# Datos de la maqina virtualizada
+url = https://localhost:8834
+login = admin
+password = 1234
+insecure = true
+access_key = ACCESS_KEY_HERE
+secret_key = SECRET_KEY_HERE
