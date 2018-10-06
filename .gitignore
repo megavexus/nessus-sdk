@@ -1,5 +1,5 @@
 venv
-config/nessus_conf.ini
+*nessus*.ini
 *nessus*.conf
 .eggs
 .pytest_cache
@@ -7,3 +7,5 @@ config/nessus_conf.ini
 __pycache__
 *.egg-info
 *.pyc
+.vscode
+*.log
