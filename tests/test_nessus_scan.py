@@ -94,7 +94,7 @@ def nessus_scanner(connection_data):
 
 
 def test_start_scanner(nessus_scanner):
-    targets = "127.0.0.1,10.228.84.74"
+    targets = "127.0.0.1,10.229.214.132"
     policy = "basic network scan"
     folder_name = "Pruebas Pytest"
     name = "Pytest Prueba SDK"
@@ -106,7 +106,7 @@ def test_start_scanner(nessus_scanner):
 
 @pytest.fixture()
 def created_scanner_id(nessus_scanner):
-    targets = "127.0.0.1,10.228.84.74"
+    targets = "10.139.121.74"
     policy = "basic network scan"
     folder_name = "Pruebas Pytest"
     name = "Pytest Prueba SDK"
@@ -136,8 +136,8 @@ def test_run_scanner(nessus_scanner, created_scanner_id):
 
 
 def test_delete_scanner(nessus_scanner):
-    targets = "127.0.0.1,10.228.84.74"
-    policy = "basic network scan"
+    targets = "127.0.0.1,10.139.121.74"
+    policy = "bash shellshock detection"
     folder_name = "Pruebas Pytest"
     name = "Pytest Delete Test"
     description = "Pytest Delete test"
@@ -186,13 +186,71 @@ def test_pause_scanner(nessus_scanner, created_scanner_id):
     scan_info = nessus_scanner.scan_inspect(created_scanner_id)
     assert scan_info['info']['status'] == "paused"
 
-    #borra el scan antes de salir
-    nessus_scanner.scan_delete(scan_id=created_scanner_id)
+    #borra el scan antes de salir, para no bloquear
+    nessus_scanner.scan_stop(scan_id=created_scanner_id)
+    time.sleep(10)
+
+@pytest.mark.slow
+def test_get_result_scan(nessus_scanner, created_scanner_id):
+    # espera a que acabe
+    scan_uuid = nessus_scanner.scan_run(created_scanner_id, wait_to_finish=True)
+    scan_results = nessus_scanner.get_results(
+        created_scanner_id, scan_uuid=scan_uuid)
+    assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'] == uuid
+    assert len(scan_results['hosts']) == 1
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
+
+@pytest.mark.slow
+def test_get_result_scan_custom_hosts(nessus_scanner, created_scanner_id):
+    # espera a que acabe
+    custom_hosts = ["10.229.214.132","10.229.214.133","10.229.214.139"]
+    scan_uuid = nessus_scanner.scan_run(
+        created_scanner_id, 
+        custom_hosts=custom_hosts,
+        wait_to_finish=True)
+    scan_results = nessus_scanner.get_results(created_scanner_id, scan_uuid=scan_uuid)
+    assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'] == uuid
+    assert len(scan_results['hosts']) == 3
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
 
 
-def test_get_result_scan():
-    pass
+def test_get_result_custom_scan(nessus_scanner, created_scanner_id):
+    created_scanner_id = 110
+    uuid = "40215f76-5212-e45a-8621-0de1f8207ad4f7b464b4f2dd63fd"
+    scan_results = nessus_scanner.get_results(
+        created_scanner_id, scan_uuid=uuid)
+    assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'] == uuid
+    assert len(scan_results['hosts']) == 3
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
 
 
 def test_get_result_events_scan():
+    pass
+
+def test_get_result_events_string_scan():
+    pass
+
+def test_get_scan_history():
+    pass
+
+
+def test_get_scan_diff(nessus_scanner):
+    created_scanner_id = 110
+    scan_results = nessus_scanner.get_diff(created_scanner_id)
+    raise Exception(scan_results)
+    pass
+
+def test_get_running_scanners():
     pass
