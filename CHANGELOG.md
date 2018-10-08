@@ -5,8 +5,11 @@
 - Método para crear e iniciar un scaneo la información de un escaneo en forma de diccionario
 - Método para actualizar los targets de un escaneo.
 - Control de flujo de ejecución de un escaneo.
-- WIP: Método para sacar la información de un escaneo en forma de diccionario
-- WIP: Método para obtener la información de escaneo en forma de eventos string para Splunk
+- Añadido logger
+- Añadido método para esperar a que un scan acabe
+- Método para sacar la información de un escaneo en forma de diccionario
+- Método para obtener la información de escaneo en forma de eventos string para Splunk
+- Método para obtener el diferencial de dos escaneos
 
 ### CHANGED
 - Se ha cambiado el acceso a ness6rest de herencia a composición, para permitir mayor aislamiento
