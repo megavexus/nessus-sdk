@@ -15,7 +15,7 @@ REQUIREMENTS_TEST = [str(ir.req) for ir in parse_requirements(
 
 setup(
     name='nessus-sdk',
-    version='0.1',
+    version='0.1_i2',
     description='SDK de Nessus para la DISMA de MAPFRE',
 
     author='Javier Gutiérrez',
