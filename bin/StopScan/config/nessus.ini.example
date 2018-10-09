@@ -1,5 +1,0 @@
-[nessus]
-url = https://10.139.90.81:8834
-login = admin
-password = XXX
-insecure = true
