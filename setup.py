@@ -15,13 +15,13 @@ REQUIREMENTS_TEST = [str(ir.req) for ir in parse_requirements(
 
 setup(
     name='nessus-sdk',
-    version='0.1_i2',
-    description='SDK de Nessus para la DISMA de MAPFRE',
+    version='0.2',
+    description='Nessus custom SDK',
 
     author='Javier Gutiérrez',
-    author_email='gnjavie@3p.mapfre.es',
+    author_email='nexus.megavexus@gmail.com',
 
-    url='https://10.229.214.133/revisiones/nessus-sdk',
+    url='https://github.com/megavexus/nessus-sdk',
 
     install_requires=REQUIREMENTS,
 
