@@ -282,8 +282,26 @@ def test_get_scan_diff(nessus_scanner):
         assert host == host_data['target']
 
 
-def test_get_scan_history():
-    pass
+def test_get_scan_history(nessus_scanner):
+    scan_id = 110
+    history = nessus_scanner._get_scan_history(scan_id)
+    assert len(history) > 0
+
+
+@pytest.mark.parametrize("targets, expected", [
+    ("host1,host2", {"alt_targets": ["host1", "host2"]}),
+    (" host1 , host2 ", {"alt_targets": ["host1", "host2"]}),
+    (["host1","host2"], {"alt_targets": ["host1", "host2"]}),
+    ([], {}),
+    ("", {}),
+    (None, {})
+])
+def test_get_custom_targets(nessus_scanner, targets, expected):
+    custom_targets = nessus_scanner._get_custom_targets(targets)
+    if len(expected) == 0:
+        assert expected == custom_targets
+    else:
+        assert sorted(expected['alt_targets']) == sorted(custom_targets['alt_targets'])
 
 
 def test_get_running_scanners():
