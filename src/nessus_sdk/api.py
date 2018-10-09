@@ -84,24 +84,11 @@ class Scanner(object):
             return True
 
     
-    def scan_run(self, scan_id, custom_targets="", wait_to_finish=False):
+    def scan_run(self, scan_id, custom_targets=None, wait_to_finish=False):
         """
         Start the scan and save the UUID to query the status
         """
-        if type(custom_targets) == str:
-            custom_targets = custom_targets.split(',')
-            
-        
-        if type(custom_targets) == list and len(custom_targets) > 0:
-            custom_hosts = set(custom_targets)
-            custom_targets = {"alt_targets":[]}
-            i = 0
-            for target in custom_hosts:
-                custom_targets['alt_targets'].append({i:target})
-                i+=1
-
-        if len(custom_targets) == 0:
-            custom_targets = None
+        custom_targets = self._get_custom_targets(custom_targets)
 
         self.scan_api.action(action="scans/{}/launch".format(scan_id), method="POST", extra=custom_targets)
         scan_info = self.scan_inspect(scan_id = scan_id)
@@ -111,6 +98,26 @@ class Scanner(object):
             self._wait_scan_to_finish(scan_id, scan_info['info']["uuid"])
         self.logger.info(scan_info['info'])
         return scan_info['info']["uuid"]
+
+    def _get_custom_targets(self, custom_targets):
+        """
+        Admite: host1,host2,host3 o [host1, host2, ...]
+        """
+        if type(custom_targets) == str and len(custom_targets) > 0:
+            custom_targets = custom_targets.split(',')
+            return self._get_custom_targets(custom_targets)
+        elif type(custom_targets) == list and len(custom_targets) > 0:
+
+            custom_targets = [
+                target.strip() 
+                for target in set(custom_targets)
+                if type(target) == str and len(target) > 0
+            ]
+
+            return {"alt_targets":custom_targets} if len(custom_targets) else {}
+
+        else:
+            return {}
 
     def _wait_scan_to_finish(self, scan_id, scan_uuid):
         running = True
