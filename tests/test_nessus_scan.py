@@ -304,5 +304,15 @@ def test_get_custom_targets(nessus_scanner, targets, expected):
         assert sorted(expected['alt_targets']) == sorted(custom_targets['alt_targets'])
 
 
-def test_get_running_scanners():
-    pass
+def test_get_running_scanners(nessus_scanner):
+    # start two scans
+    created_scanner_id = 110
+    nessus_scanner.scan_run(created_scanner_id)
+    time.sleep(3)
+    
+    running_scanners = nessus_scanner.get_running_scanners()
+
+    assert len(running_scanners) == 1
+    assert running_scanners[0]['id'] == created_scanner_id
+
+    nessus_scanner.scan_stop(created_scanner_id)

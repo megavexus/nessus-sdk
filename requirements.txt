@@ -1,4 +1,4 @@
 nessrest==0.40
-requests==2.19
-click==7.0
-configparser==3.5.0
+requests>=2.19
+click>=6.7
+configparser>=3.5.0
