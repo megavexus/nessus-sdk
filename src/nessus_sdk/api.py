@@ -457,7 +457,14 @@ class Scanner(object):
 
     def get_running_scanners(self):
         """
-        TODO:
-        Returns a list with the scanners running right now
+        Returns a list with the scanners currently running
         """
-        pass
+        self.scan_api.action("scans", method="GET")
+        all_scans = self.scan_api.res['scans']
+
+        running_scanners = []
+        for scan in all_scans:
+            if scan['status'] == "running":
+                running_scanners.append(scan)
+
+        return running_scanners
