@@ -270,10 +270,39 @@ def test_get_result_events_string_scan(nessus_scanner):
         assert 'scan_uuid="{}"'.format(uuid) in data
 
 
-def test_get_scan_diff(nessus_scanner):
+def test_get_scan_diff_last_scan(nessus_scanner):
     created_scanner_id = 110
     scan_results = nessus_scanner.get_diff(created_scanner_id)
     assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'][0:5] == "diff-" 
+    assert len(scan_results['hosts']) >= 0
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
+
+
+
+def test_get_scan_diff_one_scan(nessus_scanner):
+    created_scanner_id = 110
+    scaner_uuid = "05065a5d-4080-e352-c864-52689622a1fc8374b69eeb7a8782"
+    scan_results = nessus_scanner.get_diff(created_scanner_id, scaner_uuid)
+    assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'][0:5] == "diff-" 
+    assert len(scan_results['hosts']) >= 3
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
+
+
+def test_get_scan_diff_two_targets(nessus_scanner):
+    created_scanner_id = 110
+    scaner_uuid = "05065a5d-4080-e352-c864-52689622a1fc8374b69eeb7a8782"
+    scaner_last_uuid = "356aabec-3e66-1be3-feef-f7c5ff6b9f3fb323f4e389956493"
+    scan_results = nessus_scanner.get_diff(created_scanner_id, scaner_uuid, scaner_last_uuid)
+    raise Exception(scan_results)
+    assert scan_results['scan_id'] >= created_scanner_id
     assert scan_results['scan_uuid'][0:5] == "diff-" 
     assert len(scan_results['hosts']) == 3
     for host, host_data in scan_results['hosts'].items():
@@ -304,5 +333,15 @@ def test_get_custom_targets(nessus_scanner, targets, expected):
         assert sorted(expected['alt_targets']) == sorted(custom_targets['alt_targets'])
 
 
-def test_get_running_scanners():
-    pass
+def test_get_running_scanners(nessus_scanner):
+    # start two scans
+    created_scanner_id = 110
+    nessus_scanner.scan_run(created_scanner_id)
+    time.sleep(3)
+    
+    running_scanners = nessus_scanner.get_running_scanners()
+
+    assert len(running_scanners) == 1
+    assert running_scanners[0]['id'] == created_scanner_id
+
+    nessus_scanner.scan_stop(created_scanner_id)

@@ -15,7 +15,7 @@ REQUIREMENTS_TEST = [str(ir.req) for ir in parse_requirements(
 
 setup(
     name='nessus-sdk',
-    version='0.2',
+    version='0.3',
     description='Nessus custom SDK',
 
     author='Javier Gutiérrez',
@@ -30,6 +30,12 @@ setup(
     package_dir={'': 'src'},
     zip_safe=False,
     data_files=[('requs', glob('*.txt'))],
+
+    # CLI
+    #entry_points='''
+    #    [console_scripts]
+    #    nessus_to_bugblast=nessus_sdk.nessus_to_bugblast:upload_scan
+    #''',
 
     # Testing
     setup_requires=["pytest-runner"],
