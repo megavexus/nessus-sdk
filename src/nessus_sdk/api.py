@@ -350,7 +350,7 @@ class Scanner(object):
         results = self.get_results(scan_id, scan_uuid)
         return parse_report_to_events(results)
 
-    def parse_report_to_events(self, result):
+    def parse_report_to_events(self, results):
         data_events = []
         for host, host_data in results['hosts'].items():
             event_host_base = {
