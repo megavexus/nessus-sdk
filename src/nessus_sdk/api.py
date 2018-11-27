@@ -275,7 +275,7 @@ class Scanner(object):
                 host_dict['vulnerabilities'].append(deepcopy(vuln_data))
 
             for compliance in res_host_info['compliance']:
-                # TODO: Hacer
+                # TODO: Hacer cuando tengamos muestras con credenciales
                 pass
 
             results['hosts'][host["hostname"]] = deepcopy(host_dict)
@@ -348,8 +348,10 @@ class Scanner(object):
 
     def get_results_events(self, scan_id, scan_uuid=None):
         results = self.get_results(scan_id, scan_uuid)
-        data_events = []
+        return parse_report_to_events(results)
 
+    def parse_report_to_events(self, result):
+        data_events = []
         for host, host_data in results['hosts'].items():
             event_host_base = {
                 'scan_id': results['scan_id'],
@@ -405,16 +407,13 @@ class Scanner(object):
         else:
             raise Exception(type(value))
             
-
     def get_diff(self, scan_id, scan_uuid_orig=None, scan_uuid_target=None):
         """
         Compara el ultimo scaneo con el penultimo, y devuelve los resultados.
         Si se ha indicado scan_uuid_orig y scan_uuid_target, usará esos dos para compararlos
         """
-        if scan_uuid_orig != None and scan_uuid_target == None:
-            raise Exception("If you select the orig, you must give the target uuid")
-
         scan_history = self._get_scan_history(scan_id)
+        scan_history = [ scan for scan in scan_history if scan['status'] == 'completed' ]
         
         if scan_uuid_orig == None:
             # Obtiene los uuid de origen y target
@@ -422,12 +421,25 @@ class Scanner(object):
             scan_history_id_target = scan_history[1]['history_id']
         else:
             scan_history_id_orig = [scanner["history_id"] for scanner in scan_history if scanner['uuid'] == scan_uuid_orig][0]
-            scan_history_id_target = [scanner["history_id"] for scanner in scan_history if scanner['uuid'] == scan_uuid_target][0]
+
+            if scan_uuid_target:
+                scan_history_id_target = [scanner["history_id"] for scanner in scan_history if scanner['uuid'] == scan_uuid_target][0]
+            else:
+                # Si no hay anterior, coge el inmediatamente anterior al acual
+                # Si no lo encuentra, coge el ultimo que haya (primero)
+                last_scan = scan_history[0]
+                for scanner in scan_history:
+                    if last_scan['uuid'] == scan_uuid_orig:
+                        last_scan = scanner
+                        break
+
+                    last_scan = scanner
+                scan_history_id_target = last_scan["history_id"]
 
         # obtiene el diff: 
         diff_post_uri = "scans/{}/diff?history_id={}".format(scan_id, scan_history_id_target)
-        self.scan_api.action(action=diff_post_uri, method="POST", extra={
-                             'diff_id': scan_history_id_orig})
+        self.scan_api.action(action=diff_post_uri, method="POST", extra={'diff_id': scan_history_id_orig})
+        
         # Coge los resultados
         diff_get_results_uri = "scans/{}?diff_id={}&history_id={}".format(scan_id, scan_history_id_orig, scan_history_id_target)
         self.scan_api.action(action=diff_get_results_uri, method="GET")

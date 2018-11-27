@@ -270,10 +270,39 @@ def test_get_result_events_string_scan(nessus_scanner):
         assert 'scan_uuid="{}"'.format(uuid) in data
 
 
-def test_get_scan_diff(nessus_scanner):
+def test_get_scan_diff_last_scan(nessus_scanner):
     created_scanner_id = 110
     scan_results = nessus_scanner.get_diff(created_scanner_id)
     assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'][0:5] == "diff-" 
+    assert len(scan_results['hosts']) >= 0
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
+
+
+
+def test_get_scan_diff_one_scan(nessus_scanner):
+    created_scanner_id = 110
+    scaner_uuid = "05065a5d-4080-e352-c864-52689622a1fc8374b69eeb7a8782"
+    scan_results = nessus_scanner.get_diff(created_scanner_id, scaner_uuid)
+    assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'][0:5] == "diff-" 
+    assert len(scan_results['hosts']) >= 3
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
+
+
+def test_get_scan_diff_two_targets(nessus_scanner):
+    created_scanner_id = 110
+    scaner_uuid = "05065a5d-4080-e352-c864-52689622a1fc8374b69eeb7a8782"
+    scaner_last_uuid = "356aabec-3e66-1be3-feef-f7c5ff6b9f3fb323f4e389956493"
+    scan_results = nessus_scanner.get_diff(created_scanner_id, scaner_uuid, scaner_last_uuid)
+    raise Exception(scan_results)
+    assert scan_results['scan_id'] >= created_scanner_id
     assert scan_results['scan_uuid'][0:5] == "diff-" 
     assert len(scan_results['hosts']) == 3
     for host, host_data in scan_results['hosts'].items():
