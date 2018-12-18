@@ -1,4 +1,11 @@
 # Base de Argos Observer
+## [v0.3.1]
+### FIXED
+- Bug al sacar resultados en forma de eventos.
+
+### ADEDD
+- Capacidad para aceptar listas de targets.
+
 
 ## [v0.2.0]
 ### ADDED

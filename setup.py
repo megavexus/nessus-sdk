@@ -15,7 +15,7 @@ REQUIREMENTS_TEST = [str(ir.req) for ir in parse_requirements(
 
 setup(
     name='nessus-sdk',
-    version='0.3',
+    version='0.3.1',
     description='Nessus custom SDK',
 
     author='Javier Gutiérrez',

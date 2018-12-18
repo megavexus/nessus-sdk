@@ -43,12 +43,18 @@ class Scanner(object):
 
     def update_targets(self, scan_id, targets):
         self.scan_api.scan_id = scan_id
+        if type(targets) == list:
+            targets = ",".join(target.strip() for target in targets)
         self.scan_api.scan_update_targets(targets)
         return scan_id
 
 
     def scan_create_from_name(self,  scan_name, targets, policy_name, folder_name, description=""):
         scan_id = self.search_scan_id(scan_name)
+
+        if type(targets) == list:
+            targets = ",".join(target.strip() for target in targets)
+            
         if scan_id == None:
             self._set_scan_metadata(policy_name, folder_name, description)
             self.scan_api.scan_add(targets, name=scan_name)
@@ -259,18 +265,13 @@ class Scanner(object):
                 method="GET")
 
             # Get host info
-            try:
-                host_dict['os'] = self.scan_api.res['info']['operating-system']
-            except KeyError:
-                raise Exception("scans/{}/hosts/{}{}".format(scan_id, host["host_id"], history_id_params))
+            host_dict['os'] = self.scan_api.res['info'].get('operating-system')
             res_host_info = deepcopy(self.scan_api.res)
             for vulnerability in res_host_info['vulnerabilities']:
                 plugin_id = vulnerability['plugin_id']
                 vuln_index = vulnerability['vuln_index']
 
                 self.scan_api.action("scans/{}/hosts/{}/plugins/{}{}".format(scan_id, host["host_id"], plugin_id, history_id_params), method="GET")
-                if plugin_id == "94932":
-                    raise Exception(self.scan_api.res)
                 vuln_data = self._extract_vulnerability_data(self.scan_api.res, host["hostname"])
                 host_dict['vulnerabilities'].append(deepcopy(vuln_data))
 
@@ -348,7 +349,7 @@ class Scanner(object):
 
     def get_results_events(self, scan_id, scan_uuid=None):
         results = self.get_results(scan_id, scan_uuid)
-        return parse_report_to_events(results)
+        return self.parse_report_to_events(results)
 
     def parse_report_to_events(self, results):
         data_events = []
@@ -380,13 +381,17 @@ class Scanner(object):
 
         return data_events
 
-    def get_results_string(self, scan_id, scan_uuid=None):
-        results = self.get_results_events(scan_id, scan_uuid)
+    def parse_events_to_strings(self, result_events):
         string_results = []
-        for result in results:
+        for result in result_events:
             string_results.append(
                 ", ".join([self._key_value_to_string(key, value) for key,value in result.items()])
             )
+        return string_results
+
+    def get_results_string(self, scan_id, scan_uuid=None):
+        results = self.get_results_events(scan_id, scan_uuid)
+        string_results = self.parse_events_to_strings(results)
         return string_results
 
 
@@ -454,6 +459,7 @@ class Scanner(object):
         history = []
         for historic_data in self.scan_api.res['history']:
             if historic_data['alt_targets_used'] != False:
+                # Descarta los custom
                 continue
             history.append({
                 'uuid':historic_data['uuid'],
