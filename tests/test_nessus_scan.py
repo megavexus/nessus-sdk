@@ -257,6 +257,7 @@ def test_get_result_events_scan(nessus_scanner):
         assert data['scan_id'] == created_scanner_id
         assert data['scan_uuid'] == uuid
         assert 'port' in data
+        assert 'os' in data
         assert 'plugin_output' in data
 
 
@@ -270,6 +271,7 @@ def test_get_result_events_string_scan(nessus_scanner):
         assert type(data) == str
         assert 'protocol=' in data
         assert 'server_protocol=' in data
+        assert 'os=' in data
         assert 'scan_id={}'.format(created_scanner_id) in data
         assert 'scan_uuid="{}"'.format(uuid) in data
 
