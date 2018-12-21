@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><testsuite errors="0" failures="0" name="pytest" skips="0" tests="28" time="2022.766"><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="26" name="test_login_user_password" time="1.066161870956421"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="38" name="test_login_user_bad_password" time="1.0168724060058594"><system-out>*****************START ERROR*****************
+<?xml version="1.0" encoding="utf-8"?><testsuite errors="0" failures="0" name="pytest" skips="0" tests="29" time="1968.233"><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="26" name="test_login_user_password" time="1.0699565410614014"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="38" name="test_login_user_bad_password" time="1.0164892673492432"><system-out>*****************START ERROR*****************
 JSON    : **JSON request hidden**
 HEADERS :
 {&apos;X-Cookie&apos;: &apos;token=&apos;, &apos;Content-type&apos;: &apos;application/json&apos;, &apos;Accept&apos;: &apos;text/plain&apos;}
@@ -15,7 +15,7 @@ RESPONSE: 401
 ******************END ERROR******************
 It looks like you&apos;re trying to login into a Nessus 5
 instance. Exiting.
-</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="49" name="test_login_user_key" time="0.03898477554321289"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="61" name="test_login_wrong_akey" time="0.03038620948791504"><system-out>*****************START ERROR*****************
+</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="49" name="test_login_user_key" time="0.031163930892944336"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="61" name="test_login_wrong_akey" time="0.01975250244140625"><system-out>*****************START ERROR*****************
 JSON    :
 {}
 {}
@@ -26,11 +26,13 @@ METHOD  : GET
 RESPONSE: 401
 
 
-{}
+{
+  &quot;error&quot;: &quot;Invalid Credentials&quot;
+}
 
 
 ******************END ERROR******************
-</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="72" name="test_login_wrong_skey" time="0.01031637191772461"><system-out>*****************START ERROR*****************
+</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="72" name="test_login_wrong_skey" time="0.014601469039916992"><system-out>*****************START ERROR*****************
 JSON    :
 {}
 {}
@@ -47,13 +49,13 @@ RESPONSE: 401
 
 
 ******************END ERROR******************
-</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="95" name="test_start_scanner" time="0.0953831672668457"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="118" name="test_inspect_scan" time="0.11336803436279297"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="124" name="test_get_scan_status" time="0.10243010520935059"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="129" name="test_run_scanner" time="0.2776522636413574"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="137" name="test_delete_scanner" time="0.19051361083984375"><system-out>*****************START ERROR*****************
+</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="95" name="test_start_scanner[127.0.0.1,10.229.214.132]" time="0.10191512107849121"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="95" name="test_start_scanner[targets1]" time="0.08989095687866211"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="122" name="test_inspect_scan" time="0.1150519847869873"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="128" name="test_get_scan_status" time="0.11057353019714355"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="133" name="test_run_scanner" time="0.28374242782592773"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="141" name="test_delete_scanner" time="0.5812044143676758"><system-out>*****************START ERROR*****************
 JSON    :
 {}
 {}
 HEADERS :
 {&apos;X-ApiKeys&apos;: &apos;accessKey=df072cf7b80c14992862c5a85315be544f80d5f417f545a6fbc6ce7945ec9799; secretKey=78a67bd37fa47faa0742160e4a5e666e70a29c32e318d8845e0c9c70ef8468e5&apos;, &apos;Content-type&apos;: &apos;application/json&apos;, &apos;Accept&apos;: &apos;text/plain&apos;}
-URL     : https://127.0.0.1:8834/scans/60 
+URL     : https://127.0.0.1:8834/scans/115 
 METHOD  : GET
 RESPONSE: 404
 
@@ -64,7 +66,7 @@ RESPONSE: 404
 
 
 ******************END ERROR******************
-</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="152" name="test_stop_scanner" time="5.239065885543823"><system-out>*****************START ERROR*****************
+</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="156" name="test_stop_scanner" time="5.351322174072266"><system-out>*****************START ERROR*****************
 JSON    :
 {}
 {}
@@ -81,4 +83,4 @@ RESPONSE: 500
 
 
 ******************END ERROR******************
-</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="172" name="test_pause_scanner" time="20.5652072429657"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="199" name="test_get_result_scan" time="522.5543510913849"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="213" name="test_get_result_scan_custom_hosts" time="1455.2686605453491"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="231" name="test_get_result_custom_scan" time="2.937483787536621"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="245" name="test_get_result_events_scan" time="2.962273597717285"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="258" name="test_get_result_events_string_scan" time="2.99064564704895"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="272" name="test_get_scan_diff_last_scan" time="0.2515535354614258"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="285" name="test_get_scan_diff_one_scan" time="1.7052209377288818"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="298" name="test_get_scan_diff_two_targets" time="1.6608123779296875"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="312" name="test_get_scan_history" time="0.044760942459106445"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="318" name="test_get_custom_targets[host1,host2-expected0]" time="0.02056121826171875"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="318" name="test_get_custom_targets[ host1 , host2 -expected1]" time="0.02622246742248535"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="318" name="test_get_custom_targets[targets2-expected2]" time="0.020613670349121094"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="318" name="test_get_custom_targets[targets3-expected3]" time="0.02092289924621582"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="318" name="test_get_custom_targets[-expected4]" time="0.02001667022705078"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="318" name="test_get_custom_targets[None-expected5]" time="0.021248340606689453"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="334" name="test_get_running_scanners" time="3.252622604370117"></testcase></testsuite>
+</system-out></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="176" name="test_pause_scanner" time="20.473055124282837"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="203" name="test_get_result_scan" time="470.19253969192505"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="217" name="test_get_result_scan_custom_hosts" time="1452.3628723621368"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="235" name="test_get_result_custom_scan" time="3.0825679302215576"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="249" name="test_get_result_events_scan" time="2.930921792984009"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="263" name="test_get_result_events_string_scan" time="3.001948833465576"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="278" name="test_get_scan_diff_last_scan" time="0.24265432357788086"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="291" name="test_get_scan_diff_one_scan" time="1.7124052047729492"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="304" name="test_get_scan_diff_two_targets" time="1.643547773361206"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="318" name="test_get_scan_history" time="0.044003963470458984"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="324" name="test_get_custom_targets[host1,host2-expected0]" time="0.022828340530395508"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="324" name="test_get_custom_targets[ host1 , host2 -expected1]" time="0.021012306213378906"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="324" name="test_get_custom_targets[targets2-expected2]" time="0.02391791343688965"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="324" name="test_get_custom_targets[targets3-expected3]" time="0.02321314811706543"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="324" name="test_get_custom_targets[-expected4]" time="0.0201876163482666"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="324" name="test_get_custom_targets[None-expected5]" time="0.023792266845703125"></testcase><testcase classname="tests.test_nessus_scan" file="tests/test_nessus_scan.py" line="340" name="test_get_running_scanners" time="3.30863618850708"></testcase></testsuite>

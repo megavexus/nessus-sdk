@@ -368,7 +368,7 @@ class Scanner(object):
                 'scan_start': results['scan_start'],
                 'scan_end': results['scan_end'],
                 'scan_policy': results['scan_policy'],
-                'os': results['os'],
+                'os': host_data['os'],
                 'target': host,
             }
             if len(host_data['vulnerabilities']):
