@@ -3,6 +3,9 @@
 ### FIXED
 - Bug al sacar resultados en forma de eventos.
 
+### CHANGED
+- Añadidos datos del OS a los eventos de splunk
+
 ### ADEDD
 - Capacidad para aceptar listas de targets.
 
