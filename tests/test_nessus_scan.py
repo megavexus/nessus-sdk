@@ -93,7 +93,11 @@ def nessus_scanner(connection_data):
     return scanner
 
 
-def test_start_scanner(nessus_scanner):
+@pytest.mark.parametrize("targets", [
+    ("127.0.0.1,10.229.214.132"), 
+    (["127.0.0.1","10.229.214.132"])
+])
+def test_start_scanner(nessus_scanner, targets):
     targets = "127.0.0.1,10.229.214.132"
     policy = "basic network scan"
     folder_name = "Pruebas Pytest"
@@ -230,8 +234,8 @@ def test_get_result_scan_custom_hosts(nessus_scanner, created_scanner_id):
 
 
 def test_get_result_custom_scan(nessus_scanner, created_scanner_id):
-    created_scanner_id = 110
-    uuid = "40215f76-5212-e45a-8621-0de1f8207ad4f7b464b4f2dd63fd"
+    created_scanner_id = 26
+    uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
     scan_results = nessus_scanner.get_results(created_scanner_id, scan_uuid=uuid)
 
     assert scan_results['scan_id'] == created_scanner_id
@@ -244,8 +248,8 @@ def test_get_result_custom_scan(nessus_scanner, created_scanner_id):
 
 
 def test_get_result_events_scan(nessus_scanner):
-    created_scanner_id = 110
-    uuid = "40215f76-5212-e45a-8621-0de1f8207ad4f7b464b4f2dd63fd"
+    created_scanner_id = 26
+    uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
     scan_results = nessus_scanner.get_results_events(created_scanner_id, scan_uuid=uuid)
 
     assert len(scan_results) > 0
@@ -253,12 +257,13 @@ def test_get_result_events_scan(nessus_scanner):
         assert data['scan_id'] == created_scanner_id
         assert data['scan_uuid'] == uuid
         assert 'port' in data
+        assert 'os' in data
         assert 'plugin_output' in data
 
 
 def test_get_result_events_string_scan(nessus_scanner):
-    created_scanner_id = 110
-    uuid = "40215f76-5212-e45a-8621-0de1f8207ad4f7b464b4f2dd63fd"
+    created_scanner_id = 26
+    uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
     scan_results = nessus_scanner.get_results_string(created_scanner_id, scan_uuid=uuid)
 
     assert len(scan_results) > 0
@@ -266,16 +271,45 @@ def test_get_result_events_string_scan(nessus_scanner):
         assert type(data) == str
         assert 'protocol=' in data
         assert 'server_protocol=' in data
+        assert 'os=' in data
         assert 'scan_id={}'.format(created_scanner_id) in data
         assert 'scan_uuid="{}"'.format(uuid) in data
 
 
-def test_get_scan_diff(nessus_scanner):
-    created_scanner_id = 110
+def test_get_scan_diff_last_scan(nessus_scanner):
+    created_scanner_id = 26
     scan_results = nessus_scanner.get_diff(created_scanner_id)
     assert scan_results['scan_id'] == created_scanner_id
     assert scan_results['scan_uuid'][0:5] == "diff-" 
-    assert len(scan_results['hosts']) == 3
+    assert len(scan_results['hosts']) >= 0
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
+
+
+
+def test_get_scan_diff_one_scan(nessus_scanner):
+    created_scanner_id = 26
+    scaner_uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
+    scan_results = nessus_scanner.get_diff(created_scanner_id, scaner_uuid)
+    assert scan_results['scan_id'] == created_scanner_id
+    assert scan_results['scan_uuid'][0:5] == "diff-" 
+    assert len(scan_results['hosts']) >= 0
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
+
+
+def test_get_scan_diff_two_targets(nessus_scanner):
+    created_scanner_id = 26
+    scaner_uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
+    scaner_last_uuid = "5a966b84-107f-a55e-23ba-aea8514b89c876d75fa78a467743"
+    scan_results = nessus_scanner.get_diff(created_scanner_id, scaner_uuid, scaner_last_uuid)
+    assert scan_results['scan_id'] >= created_scanner_id
+    assert scan_results['scan_uuid'][0:5] == "diff-" 
+    assert len(scan_results['hosts']) == 2
     for host, host_data in scan_results['hosts'].items():
         assert 'vulnerabilities' in host_data
         assert 'compliance' in host_data
@@ -283,7 +317,7 @@ def test_get_scan_diff(nessus_scanner):
 
 
 def test_get_scan_history(nessus_scanner):
-    scan_id = 110
+    scan_id = 26
     history = nessus_scanner._get_scan_history(scan_id)
     assert len(history) > 0
 
@@ -306,7 +340,7 @@ def test_get_custom_targets(nessus_scanner, targets, expected):
 
 def test_get_running_scanners(nessus_scanner):
     # start two scans
-    created_scanner_id = 110
+    created_scanner_id = 26
     nessus_scanner.scan_run(created_scanner_id)
     time.sleep(3)
     

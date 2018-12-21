@@ -43,12 +43,18 @@ class Scanner(object):
 
     def update_targets(self, scan_id, targets):
         self.scan_api.scan_id = scan_id
+        if type(targets) == list:
+            targets = ",".join(target.strip() for target in targets)
         self.scan_api.scan_update_targets(targets)
         return scan_id
 
 
     def scan_create_from_name(self,  scan_name, targets, policy_name, folder_name, description=""):
         scan_id = self.search_scan_id(scan_name)
+
+        if type(targets) == list:
+            targets = ",".join(target.strip() for target in targets)
+            
         if scan_id == None:
             self._set_scan_metadata(policy_name, folder_name, description)
             self.scan_api.scan_add(targets, name=scan_name)
@@ -216,6 +222,13 @@ class Scanner(object):
         return history_id
     
     def scan_status(self, scan_id=None, scan_name=None, scan_uuid=None):
+        """
+        Estados:
+        - running
+        - completed
+        - canceled
+        - stopped
+        """
         scan_info = self.scan_inspect(scan_id, scan_name=scan_name, scan_uuid=scan_uuid)
         return scan_info['info']['status']
 
@@ -259,23 +272,18 @@ class Scanner(object):
                 method="GET")
 
             # Get host info
-            try:
-                host_dict['os'] = self.scan_api.res['info']['operating-system']
-            except KeyError:
-                raise Exception("scans/{}/hosts/{}{}".format(scan_id, host["host_id"], history_id_params))
+            host_dict['os'] = self.scan_api.res['info'].get('operating-system')
             res_host_info = deepcopy(self.scan_api.res)
             for vulnerability in res_host_info['vulnerabilities']:
                 plugin_id = vulnerability['plugin_id']
                 vuln_index = vulnerability['vuln_index']
 
                 self.scan_api.action("scans/{}/hosts/{}/plugins/{}{}".format(scan_id, host["host_id"], plugin_id, history_id_params), method="GET")
-                if plugin_id == "94932":
-                    raise Exception(self.scan_api.res)
                 vuln_data = self._extract_vulnerability_data(self.scan_api.res, host["hostname"])
                 host_dict['vulnerabilities'].append(deepcopy(vuln_data))
 
             for compliance in res_host_info['compliance']:
-                # TODO: Hacer
+                # TODO: Hacer cuando tengamos muestras con credenciales
                 pass
 
             results['hosts'][host["hostname"]] = deepcopy(host_dict)
@@ -348,8 +356,10 @@ class Scanner(object):
 
     def get_results_events(self, scan_id, scan_uuid=None):
         results = self.get_results(scan_id, scan_uuid)
-        data_events = []
+        return self.parse_report_to_events(results)
 
+    def parse_report_to_events(self, results):
+        data_events = []
         for host, host_data in results['hosts'].items():
             event_host_base = {
                 'scan_id': results['scan_id'],
@@ -358,6 +368,7 @@ class Scanner(object):
                 'scan_start': results['scan_start'],
                 'scan_end': results['scan_end'],
                 'scan_policy': results['scan_policy'],
+                'os': host_data['os'],
                 'target': host,
             }
             if len(host_data['vulnerabilities']):
@@ -378,13 +389,17 @@ class Scanner(object):
 
         return data_events
 
-    def get_results_string(self, scan_id, scan_uuid=None):
-        results = self.get_results_events(scan_id, scan_uuid)
+    def parse_events_to_strings(self, result_events):
         string_results = []
-        for result in results:
+        for result in result_events:
             string_results.append(
                 ", ".join([self._key_value_to_string(key, value) for key,value in result.items()])
             )
+        return string_results
+
+    def get_results_string(self, scan_id, scan_uuid=None):
+        results = self.get_results_events(scan_id, scan_uuid)
+        string_results = self.parse_events_to_strings(results)
         return string_results
 
 
@@ -405,16 +420,13 @@ class Scanner(object):
         else:
             raise Exception(type(value))
             
-
     def get_diff(self, scan_id, scan_uuid_orig=None, scan_uuid_target=None):
         """
         Compara el ultimo scaneo con el penultimo, y devuelve los resultados.
         Si se ha indicado scan_uuid_orig y scan_uuid_target, usará esos dos para compararlos
         """
-        if scan_uuid_orig != None and scan_uuid_target == None:
-            raise Exception("If you select the orig, you must give the target uuid")
-
         scan_history = self._get_scan_history(scan_id)
+        scan_history = [ scan for scan in scan_history if scan['status'] == 'completed' ]
         
         if scan_uuid_orig == None:
             # Obtiene los uuid de origen y target
@@ -422,12 +434,25 @@ class Scanner(object):
             scan_history_id_target = scan_history[1]['history_id']
         else:
             scan_history_id_orig = [scanner["history_id"] for scanner in scan_history if scanner['uuid'] == scan_uuid_orig][0]
-            scan_history_id_target = [scanner["history_id"] for scanner in scan_history if scanner['uuid'] == scan_uuid_target][0]
+
+            if scan_uuid_target:
+                scan_history_id_target = [scanner["history_id"] for scanner in scan_history if scanner['uuid'] == scan_uuid_target][0]
+            else:
+                # Si no hay anterior, coge el inmediatamente anterior al acual
+                # Si no lo encuentra, coge el ultimo que haya (primero)
+                last_scan = scan_history[0]
+                for scanner in scan_history:
+                    if last_scan['uuid'] == scan_uuid_orig:
+                        last_scan = scanner
+                        break
+
+                    last_scan = scanner
+                scan_history_id_target = last_scan["history_id"]
 
         # obtiene el diff: 
         diff_post_uri = "scans/{}/diff?history_id={}".format(scan_id, scan_history_id_target)
-        self.scan_api.action(action=diff_post_uri, method="POST", extra={
-                             'diff_id': scan_history_id_orig})
+        self.scan_api.action(action=diff_post_uri, method="POST", extra={'diff_id': scan_history_id_orig})
+        
         # Coge los resultados
         diff_get_results_uri = "scans/{}?diff_id={}&history_id={}".format(scan_id, scan_history_id_orig, scan_history_id_target)
         self.scan_api.action(action=diff_get_results_uri, method="GET")
@@ -442,6 +467,7 @@ class Scanner(object):
         history = []
         for historic_data in self.scan_api.res['history']:
             if historic_data['alt_targets_used'] != False:
+                # Descarta los custom
                 continue
             history.append({
                 'uuid':historic_data['uuid'],
