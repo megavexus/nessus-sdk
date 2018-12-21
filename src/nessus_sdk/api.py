@@ -222,6 +222,13 @@ class Scanner(object):
         return history_id
     
     def scan_status(self, scan_id=None, scan_name=None, scan_uuid=None):
+        """
+        Estados:
+        - running
+        - completed
+        - canceled
+        - stopped
+        """
         scan_info = self.scan_inspect(scan_id, scan_name=scan_name, scan_uuid=scan_uuid)
         return scan_info['info']['status']
 
@@ -361,6 +368,7 @@ class Scanner(object):
                 'scan_start': results['scan_start'],
                 'scan_end': results['scan_end'],
                 'scan_policy': results['scan_policy'],
+                'os': host_data['os'],
                 'target': host,
             }
             if len(host_data['vulnerabilities']):
