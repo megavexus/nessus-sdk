@@ -93,6 +93,7 @@ def nessus_scanner(connection_data):
     return scanner
 
 
+@pytest.mark.skip(reason="Deprecado en la API de Nessus Pro")
 @pytest.mark.parametrize("targets", [
     ("127.0.0.1,10.229.214.132"), 
     (["127.0.0.1","10.229.214.132"])
@@ -130,7 +131,7 @@ def test_get_scan_status(nessus_scanner, created_scanner_id):
     scan_status = nessus_scanner.scan_status(scan_id=created_scanner_id)
     assert type(scan_status) == str
 
-
+@pytest.mark.skip(reason="Deprecado en la API de Nessus Pro")
 def test_run_scanner(nessus_scanner, created_scanner_id):
     scan_uuid = nessus_scanner.scan_run(scan_id=created_scanner_id)
     assert type(scan_uuid) == str
@@ -139,6 +140,7 @@ def test_run_scanner(nessus_scanner, created_scanner_id):
     assert scan_info['info']['uuid'] == scan_uuid
 
 
+@pytest.mark.skip(reason="Deprecado en la API de Nessus Pro")
 def test_delete_scanner(nessus_scanner):
     targets = "127.0.0.1,10.229.214.132"
     policy = "bash shellshock detection"
@@ -153,7 +155,7 @@ def test_delete_scanner(nessus_scanner):
         scan_info = nessus_scanner.scan_inspect(scan_id=scan_id)
         str(ex) == "The requested file was not found"
 
-
+@pytest.mark.skip(reason="Deprecado en la API de Nessus Pro")
 def test_stop_scanner(nessus_scanner, created_scanner_id):
     scan_uuid = nessus_scanner.scan_run(created_scanner_id)
     scan_info = nessus_scanner.scan_inspect(created_scanner_id)
@@ -175,6 +177,7 @@ def test_stop_scanner(nessus_scanner, created_scanner_id):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="Deprecado en la API de Nessus Pro")
 def test_pause_scanner(nessus_scanner, created_scanner_id):
     scan_info = nessus_scanner.scan_inspect(created_scanner_id)
     targets = scan_info['info']['targets']
@@ -202,6 +205,7 @@ def test_pause_scanner(nessus_scanner, created_scanner_id):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="Deprecado en la API de Nessus Pro")
 def test_get_result_scan(nessus_scanner, created_scanner_id):
     # espera a que acabe
     scan_uuid = nessus_scanner.scan_run(created_scanner_id, wait_to_finish=True)
@@ -216,6 +220,7 @@ def test_get_result_scan(nessus_scanner, created_scanner_id):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="Deprecado en la API de Nessus Pro")
 def test_get_result_scan_custom_hosts(nessus_scanner, created_scanner_id):
     # espera a que acabe
     custom_hosts = ["10.229.214.132","10.229.214.133","10.229.214.139"]
