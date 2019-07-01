@@ -33,8 +33,7 @@ def test_login_user_password(connection_data):
         password=connection_data['password'],
         unsecure=connection_data['unsafe'],
     )
-    scan_list = scanner.scan_list()
-    assert len(scan_list) > 0
+    assert len(scanner.scan_api._session.headers) > 0
 
 
 def test_login_user_bad_password(connection_data):
@@ -62,15 +61,26 @@ def sc_scanner(connection_data):
     return scanner
 
 
-## Get Instances
+## Inspect Scans
 def test_list_results(sc_scanner):
     list_instances = sc_scanner.scan_api.scan_instances.list()
-    assert list_instances
-    raise Exception(list_instances)
+    assert len(list_instances) > 0
+
 
 def test_get_scan_result(sc_scanner):
+    results = sc_scanner.get_scan_results(scan_id=2)
+    assert len(results) > 0
+
+
+def test_get_scan_info(sc_scanner):
     results = sc_scanner.scan_inspect(scan_id=2)
-    raise Exception(results)
-### Obtiene las instancias de un escaneo
-### Obtiene 
-## Get Results
+    assert len(results) > 0
+    assert len(results['vulnerabilities']) > 0
+
+
+def test_get_scan_status(sc_scanner):
+    status = sc_scanner.scan_status(scan_id=2)
+    assert status == "Complete"
+
+## TODO: Create Scans
+## TODO: Control Scans

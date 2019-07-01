@@ -10,10 +10,6 @@ import requests
 from operator import itemgetter
 from enum import Enum
 
-- running
-        - completed
-        - canceled
-        - stopped
 class ScanStatus(Enum):
     # TODO: Completar
     COMPLETED = 'Completed'
@@ -78,20 +74,54 @@ class Scanner(object):
         return scanners_results
 
 
-    def get_scan(self, scan_id):
+    def get_scan_details(self, scan_id):
         """
         Get the details of a scan
         """
         scan_details = self.scan_api.scan_instances.details(scan_id)
         return scan_details
 
-    def get_scan_results(self, scan_id):
+
+    def scan_inspect(self, scan_id=None, scan_name=None):
         """
-        Get the details of a scan
+        Fetch the details of the requested scan
         """
-        scan_details = self.scan_api.scan_instances.details(scan_id)
+        
+        if scan_name and not scan_id:
+            scans = self.list_scan_results(name=scan_name)
+            if len(scans) > 1:
+                last_scan_id = scans[0]['id']
+                for scan in scans[1:]:
+                    if int(last_scan_id) < int(scan['id']):
+                        last_scan_id = scan['id']
+                scan_id = last_scan_id
+        elif scan_id == None:
+            raise ValueError("Not id or name provided")
+        
+        scan_details = self.get_scan_details(scan_id)
+        scan_results = self.get_scan_results(scan_id)
+        scan_details['vulnerabilities'] = scan_results
         return scan_details
 
+    def get_scan_results(self, scan_id, *filters, **kw):
+        """
+        Get the details of a scan
+        Args:
+            filters: The filters will be in the form of tuples, for example:
+                - self.get_scan_results(scan_id=10, filters = [("severity", "=", "4), )=])
+            kw: The parameters of the api. For more information: 
+                https://github.com/tenable/pyTenable/blob/6eb7ea3b12022f5093c30051a21400fbfb60f8e9/tenable/sc/analysis.py#L212
+            
+        """
+        vulns = []
+        scan_results = self.scan_api.analysis.vulns(*filters, scan_id=scan_id, **kw)
+        for vuln in scan_results:
+            vulns.append(vuln)
+        return vulns
+
+    def scan_status(self, scan_id):
+        scan_info = self.get_scan_details(scan_id)
+        return scan_info['info']['status']
         
     def list_results_of_scan(self, scan_id):
         """
@@ -100,7 +130,8 @@ class Scanner(object):
         # TODO: Obtiene
         pass 
 
-
+    ### TODO: HASTA AQUÍ ###
+    
     ## Program
     def update_targets(self, scan_id, targets):
         # TODO:
@@ -247,37 +278,6 @@ class Scanner(object):
 
         return results
 
-    def scan_inspect(self, scan_id=None, scan_name=None, scan_uuid=None):
-        """
-        Fetch the details of the requested scan
-        """
-        if scan_id != None:
-            details_uri = "scans/{}".format(scan_id)
-            self.scan_api.action(action=details_uri, method="GET")
-            if scan_uuid != None:
-                history_id = None
-                for historic_data in self.scan_api.res['history']:
-                    if scan_uuid == historic_data["uuid"]:
-                        history_id = historic_data["history_id"]
-                        self.scan_api.action(action=details_uri+"?history_id={}".format(history_id), method="GET")
-                        if self.scan_api.res['info']['uuid'] != scan_uuid:
-                            raise ValueError("{} != {}".format(
-                                scan_uuid, self.scan_api.res['info']['uuid']))
-                        break
-                else:
-                    raise ScanNotFoundException("UUID {} doesnt exists in the scan {}".format(
-                        scan_uuid, scan_id
-                    ))
-        elif scan_name != None:
-            self.scan_api.scan_details(scan_name)
-        else: 
-            return None
-
-        if 'error' in self.scan_api.res:
-            raise KeyError(self.scan_api.res['error'])
-
-        return self.scan_api.res
-
     def _get_history_id(self, scan_id, scan_uuid):
         history_id = ""
         details_uri = "scans/{}".format(scan_id)
@@ -291,16 +291,7 @@ class Scanner(object):
                 break
         return history_id
     
-    def scan_status(self, scan_id=None, scan_name=None, scan_uuid=None):
-        """
-        Estados:
-        - running
-        - completed
-        - canceled
-        - stopped
-        """
-        scan_info = self.scan_inspect(scan_id, scan_name=scan_name, scan_uuid=scan_uuid)
-        return scan_info['info']['status']
+    
 
 
     def get_results(self, scan_id, scan_uuid=None):
