@@ -123,18 +123,12 @@ class Scanner(object):
         scan_info = self.get_scan_details(scan_id)
         return scan_info['info']['status']
         
-    def list_results_of_scan(self, scan_id):
-        """
-        Devuvelve todas las ejecuciones de un escaneo
-        """
-        # TODO: Obtiene
-        pass 
-
     ### TODO: HASTA AQUÍ ###
-    
+
     ## Program
     def update_targets(self, scan_id, targets):
         # TODO:
+        raise NotImplementedError()
         self.scan_api.scan_id = scan_id
         if type(targets) == list:
             targets = ",".join(target.strip() for target in targets)
@@ -144,6 +138,7 @@ class Scanner(object):
 
     def scan_create_from_name(self,  scan_name, targets, policy_name, folder_name, description=""):
         # TODO:
+        raise NotImplementedError()
         scan_id = self.search_scan_id(scan_name)
 
         if type(targets) == list:
@@ -162,11 +157,13 @@ class Scanner(object):
         Crea un scan con las opciones de policy indicadas.
         Si se policy_options policy_name, lo cogerá si existe.
         """
+        raise NotImplementedError()
         self._set_scan_metadata(policy_name, folder_name, description)
         return self.update_targets(scan_id, targets)
 
     def _set_scan_metadata(self, policy_name, folder_name, description):
         # TODO:
+        raise NotImplementedError()
         self.scan_api._scan_tag(folder_name)
         if description != "":
             self.scan_api.description = description
@@ -180,6 +177,7 @@ class Scanner(object):
         # TODO:
         Start the scan and save the UUID to query the status
         """
+        raise NotImplementedError()
         self.scan_api.action(action="scans/{}".format(scan_id) , method="DELETE")
         if 'error' in self.scan_api.res:
             return self.scan_api.res
@@ -192,6 +190,7 @@ class Scanner(object):
         # TODO:
         Start the scan and save the UUID to query the status
         """
+        raise NotImplementedError()
         custom_targets = self._get_custom_targets(custom_targets)
 
         self.scan_api.action(action="scans/{}/launch".format(scan_id), method="POST", extra=custom_targets)
@@ -208,6 +207,8 @@ class Scanner(object):
         # TODO:
         Admite: host1,host2,host3 o [host1, host2, ...]
         """
+        raise NotImplementedError()
+
         if type(custom_targets) == str and len(custom_targets) > 0:
             custom_targets = custom_targets.split(',')
             return self._get_custom_targets(custom_targets)
@@ -226,6 +227,7 @@ class Scanner(object):
 
     def _wait_scan_to_finish(self, scan_id, scan_uuid):
         # TODO:
+        raise NotImplementedError()
         running = True
         counter = 0
 
@@ -249,6 +251,7 @@ class Scanner(object):
         '''
         Stop the scan instances which are running
         '''
+        raise NotImplementedError()
         self.scan_api.action(action="scans/{}/stop".format(scan_id), method="POST")
         scan_info = self.scan_inspect(scan_id)
         return scan_info['info']["uuid"]
@@ -258,6 +261,7 @@ class Scanner(object):
         '''
         Pause the scan instances which are running
         '''
+        raise NotImplementedError()
         self.scan_api.action(action="scans/{}/pause".format(scan_id), method="POST")
         scan_info = self.scan_inspect(scan_id)
         return scan_info['info']["uuid"]
@@ -268,6 +272,7 @@ class Scanner(object):
         # TODO: Deprecado?
         Fetch a list with scans from a specified folder
         '''
+        raise NotImplementedError()
         self.scan_api.scan_list()
         scans = self.scan_api.res['scans']
 
@@ -279,6 +284,7 @@ class Scanner(object):
         return results
 
     def _get_history_id(self, scan_id, scan_uuid):
+        raise NotImplementedError()
         history_id = ""
         details_uri = "scans/{}".format(scan_id)
         self.scan_api.action(action=details_uri, method="GET")
@@ -295,6 +301,7 @@ class Scanner(object):
 
 
     def get_results(self, scan_id, scan_uuid=None):
+        raise NotImplementedError()
         self.scan_id = scan_id
         self.scan_inspect(self.scan_id, scan_uuid=scan_uuid)
 
@@ -306,6 +313,7 @@ class Scanner(object):
         return results
 
     def _extract_scan_results(self, scan_id, history_id, diff_id=None):
+        raise NotImplementedError()
                 
         history_id_params = "?history_id={}".format(history_id)   
         if diff_id:
@@ -351,6 +359,7 @@ class Scanner(object):
         return results
 
     def _extract_vulnerability_data(self, vuln_information, hostname):
+        raise NotImplementedError()
         vuln_data = {}
 
         port_data = ""
@@ -415,10 +424,12 @@ class Scanner(object):
         return vuln_data
 
     def get_results_events(self, scan_id, scan_uuid=None):
+        raise NotImplementedError()
         results = self.get_results(scan_id, scan_uuid)
         return self.parse_report_to_events(results)
 
     def parse_report_to_events(self, results):
+        raise NotImplementedError()
         data_events = []
         for host, host_data in results['hosts'].items():
             event_host_base = {
