@@ -82,5 +82,17 @@ def test_get_scan_status(sc_scanner):
     status = sc_scanner.scan_status(scan_id=2)
     assert status == "Complete"
 
+
+@pytest.mark.slow
+def test_get_result_scan(sc_scanner):
+    # espera a que acabe
+    created_scanner_id = 9
+    scan_results = sc_scanner.get_results(created_scanner_id)
+    assert scan_results['scan_id'] == created_scanner_id
+    assert len(scan_results['hosts']) >= 1
+    for host, host_data in scan_results['hosts'].items():
+        assert 'vulnerabilities' in host_data
+        assert 'compliance' in host_data
+        assert host == host_data['target']
 ## TODO: Create Scans
 ## TODO: Control Scans

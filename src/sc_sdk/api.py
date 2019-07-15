@@ -82,7 +82,7 @@ class Scanner(object):
         return scan_details
 
 
-    def scan_inspect(self, scan_id=None, scan_name=None):
+    def scan_inspect(self, scan_id=None, scan_name=None, tool="vulndetails"):
         """
         Fetch the details of the requested scan
         """
@@ -99,9 +99,19 @@ class Scanner(object):
             raise ValueError("Not id or name provided")
         
         scan_details = self.get_scan_details(scan_id)
-        scan_results = self.get_scan_results(scan_id)
+        scan_results = self.get_scan_results(scan_id, tool=tool)
         scan_details['vulnerabilities'] = scan_results
         return scan_details
+
+    
+
+    def scan_status(self, scan_id):
+        scan_info = self.get_scan_details(scan_id)
+        return scan_info['status']
+        
+    ##################
+    ### RESULTADOS ###
+    ##################
 
     def get_scan_results(self, scan_id, *filters, **kw):
         """
@@ -119,10 +129,204 @@ class Scanner(object):
             vulns.append(vuln)
         return vulns
 
-    def scan_status(self, scan_id):
-        scan_info = self.get_scan_details(scan_id)
-        return scan_info['info']['status']
+    def get_results(self, scan_id):
+        # TODO: Adaptar al SC
+        status = self.scan_status(scan_id)
+
+        if status != ScanStatus.COMPLETED.value:
+            return None
         
+        results = self._extract_scan_results(scan_id)
+        return results
+
+
+    def _extract_scan_results(self, scan_id, diff_id=None):
+        #history_id_params = "?history_id={}".format(history_id)   
+        #if diff_id:
+        #    history_id_params = history_id_params + "&diff_id={}".format(diff_id)
+        #self.scan_api._scan_status() # No esperamos a que termine
+        scan_info = self.scan_inspect(scan_id)
+        results = {
+            "scan_id": scan_id,
+            "scan_uuid": scan_info.get("uuid"),
+            "scan_name": scan_info["name"],
+            "scan_start": scan_info["startTime"],
+            "scan_end": scan_info["finishTime"],
+            "scan_policy": scan_info.get("details", ""),
+            "hosts":{}
+        }
+
+        results['hosts'] = {}
+        for vuln in scan_info["vulnerabilities"]:
+            vuln_data = self._extract_vulnerability_data(vuln)
+            
+            hostname = vuln["ip"]
+            if hostname not in results['hosts']:
+                host_dict = {
+                    'target': hostname,
+                    'dnsname': vuln.get('dnsName'),
+                    'compliance': [],
+                    'vulnerabilities': []
+                }
+
+                    # TODO: Get host info
+                    #host_dict['os'] = self.scan_api.res['info'].get('operating-system')
+                    #res_host_info = deepcopy(self.scan_api.res)
+                results['hosts'][hostname] = host_dict
+            
+            results['hosts'][hostname]['vulnerabilities'].append(vuln_data)      
+            
+            #for compliance in res_host_info['compliance']:
+                # TODO: Hacer cuando tengamos muestras con credenciales
+                #pass
+
+        return results
+
+    def _extract_vulnerability_data(self, vuln_information):
+        # TODO: Adaptar al SC
+
+        vuln_data = {}
+
+        port_data = ""
+        occurences = []
+        ports = []
+        """
+        for output in vuln_information['outputs']:
+            for ports_value, ports_info in output['ports'].items():
+                for hosts_portinfo in ports_info:
+                    if hosts_portinfo['hostname'] == hostname:
+                        
+                        port_data = ports_value.split(" / ")
+                        ports.append(port_data[0])
+                        occurences.append({
+                            "port":port_data[0],
+                            "protocol":port_data[1],
+                            "server_protocol":port_data[2],
+                            "plugin_output": output["plugin_output"]
+                        })
+                        break
+        """
+        occurences.append(
+            {
+                "port":[vuln_information['port']],
+                "protocol":vuln_information['protocol'].lower(),
+                "server_protocol":"-",
+                "plugin_output":vuln_information['pluginText'],
+            }
+        )
+        ports = [vuln_information['port']]
+
+        plugin_synopsis = vuln_information['synopsis'] 
+        plugin_description = vuln_information['description'] 
+        plugin_solution = vuln_information['solution'] 
+        plugin_output = vuln_information['pluginText']
+        cve = vuln_information['cve']
+        cvss_vector = vuln_information['cvssV3Vector']
+        if cvss_vector == "":
+            cvss_vector = vuln_information['cvssVector']
+
+        vuln_data = {
+            "plugin_id": vuln_information["pluginID"],
+            "plugin_name": vuln_information["pluginName"],
+            "plugin_fname": vuln_information['family']['name'],
+            "plugin_family": vuln_information['family']['id'],
+            "severity": vuln_information['severity']['id'],
+            "risk_factor": vuln_information['riskFactor'],
+            "plugin_version": vuln_information["version"],
+            "synopsis": plugin_synopsis,
+            "description": plugin_description,
+            "see_also": vuln_information['seeAlso'],
+            "solution": plugin_solution,
+            "occurences": occurences,
+            "ports": ports,
+            #
+            # TODO: ESTOS!! SACAR DE XREF
+            "cwe": "",
+            "iavb": "",
+            "edb-id": "",
+            "cve": cve,
+            #
+            "cvss_vector": cvss_vector,
+            "cvss_temporal_vector": "",
+            "cvss_temporal_score": vuln_information['temporalScore'],
+            "cvss_base_score": vuln_information['baseScore'],
+            #
+            "exploitability_ease": vuln_information.get("exploitEase", ""),
+            "cpe": vuln_information.get("cpe", ""),
+            "exploit_available": vuln_information.get("exploitAvailable", "") in ["Exploits are available"],
+            "vuln_publication_date": vuln_information.get("vulnPubDate", ""),
+            "patch_publication_date": vuln_information.get("patchPubDate", "")
+        }
+        
+        return vuln_data
+
+    def get_results_events(self, scan_id):
+        # TODO: Adaptar al SC
+        results = self.get_results(scan_id)
+        return self.parse_report_to_events(results)
+
+    def parse_report_to_events(self, results):
+        data_events = []
+        for host, host_data in results['hosts'].items():
+            event_host_base = {
+                'scan_id': results['scan_id'],
+                'scan_uuid': results.get('scan_uuid'),
+                'scan_name': results['scan_name'],
+                'scan_start': results['scan_start'],
+                'scan_end': results['scan_end'],
+                'scan_policy': results['scan_policy'],
+                'os': host_data.get('os'),
+                'target': host,
+            }
+            if len(host_data['vulnerabilities']):
+                for vulns in host_data['vulnerabilities']:
+                    vulns.update(event_host_base)
+                    occurrences = vulns.pop('occurences')
+                    # Quitamos ports ya que la información la da occurences
+                    vulns.pop('ports')
+                    for occurrence in occurrences:
+                        data_vuln_event = deepcopy(vulns)
+                        data_vuln_event['port'] = occurrence['port']
+                        data_vuln_event['protocol'] = occurrence['protocol']
+                        data_vuln_event['server_protocol'] = occurrence['server_protocol']
+                        data_vuln_event['plugin_output'] = occurrence['plugin_output']
+                        data_events.append(data_vuln_event)
+            else:
+                data_events.append(event_host_base)
+
+        return data_events
+
+    def parse_events_to_strings(self, result_events):
+        string_results = []
+        for result in result_events:
+            string_results.append(
+                ", ".join([self._key_value_to_string(key, value) for key,value in result.items()])
+            )
+        return string_results
+
+    def get_results_string(self, scan_id):
+        results = self.get_results_events(scan_id)
+        string_results = self.parse_events_to_strings(results)
+        return string_results
+
+
+    def _key_value_to_string(self, key, value):
+        if type(value) in [int, float]:
+                return '{}={}'.format(key, value)
+        elif type(value) in [str, bytes]:
+            try:
+                return "{}={}".format(key, int(value))
+            except ValueError:
+                return '{}="{}"'.format(key, value.replace("\"", "'"))
+        elif type(value) == bool:
+            return "{}={}".format(key, value)
+        elif type(value) == list:
+            return "{}={}".format(key, ",".join(value))
+        elif value == None:
+            return '{}=""'.format(key)
+        else:
+            raise Exception(type(value))
+
     ### TODO: HASTA AQUÍ ###
 
     ## Program
@@ -296,206 +500,15 @@ class Scanner(object):
                     raise ValueError("{} != {}".format(scan_uuid, self.scan_api.res['info']['uuid']))
                 break
         return history_id
-    
-    
 
-
-    def get_results(self, scan_id, scan_uuid=None):
-        raise NotImplementedError()
-        self.scan_id = scan_id
-        self.scan_inspect(self.scan_id, scan_uuid=scan_uuid)
-
-        if self.scan_api.res['info']['status'] != "completed":
-            return None
-        
-        history_id = self._get_history_id(scan_id, self.scan_api.res['info']['uuid'])
-        results = self._extract_scan_results(scan_id, history_id)
-        return results
-
-    def _extract_scan_results(self, scan_id, history_id, diff_id=None):
-        raise NotImplementedError()
-                
-        history_id_params = "?history_id={}".format(history_id)   
-        if diff_id:
-            history_id_params = history_id_params + "&diff_id={}".format(diff_id)
-        #self.scan_api._scan_status() # No esperamos a que termine
-        results = {
-            "scan_id": self.scan_api.res["info"]["object_id"],
-            "scan_uuid": self.scan_api.res["info"]["uuid"],
-            "scan_name": self.scan_api.res["info"]["name"],
-            "scan_start": self.scan_api.res["info"]["scan_start"],
-            "scan_end": self.scan_api.res["info"]["scan_end"],
-            "scan_policy": self.scan_api.res["info"].get("policy", ""),
-            "hosts":{}
-        }
-
-        for host in self.scan_api.res["hosts"]:
-            host_dict = {
-                'target': host["hostname"],
-                'compliance': [],
-                'vulnerabilities': []
-            }
-            self.scan_api.action("scans/{}/hosts/{}{}".format(
-                scan_id, host["host_id"], history_id_params), 
-                method="GET")
-
-            # Get host info
-            host_dict['os'] = self.scan_api.res['info'].get('operating-system')
-            res_host_info = deepcopy(self.scan_api.res)
-            for vulnerability in res_host_info['vulnerabilities']:
-                plugin_id = vulnerability['plugin_id']
-                vuln_index = vulnerability['vuln_index']
-
-                self.scan_api.action("scans/{}/hosts/{}/plugins/{}{}".format(scan_id, host["host_id"], plugin_id, history_id_params), method="GET")
-                vuln_data = self._extract_vulnerability_data(self.scan_api.res, host["hostname"])
-                host_dict['vulnerabilities'].append(deepcopy(vuln_data))
-
-            for compliance in res_host_info['compliance']:
-                # TODO: Hacer cuando tengamos muestras con credenciales
-                pass
-
-            results['hosts'][host["hostname"]] = deepcopy(host_dict)
-
-        return results
-
-    def _extract_vulnerability_data(self, vuln_information, hostname):
-        raise NotImplementedError()
-        vuln_data = {}
-
-        port_data = ""
-        occurences = []
-        ports = []
-        for output in vuln_information['outputs']:
-            for ports_value, ports_info in output['ports'].items():
-                for hosts_portinfo in ports_info:
-                    if hosts_portinfo['hostname'] == hostname:
-                        
-                        port_data = ports_value.split(" / ")
-                        ports.append(port_data[0])
-                        occurences.append({
-                            "port":port_data[0],
-                            "protocol":port_data[1],
-                            "server_protocol":port_data[2],
-                            "plugin_output": output["plugin_output"]
-                        })
-                        break
-
-        plugin_description = vuln_information['info']["plugindescription"] 
-        plugin_attributes = plugin_description['pluginattributes'] 
-        vuln_info = plugin_attributes.get('vuln_information', {})
-        ref_information = plugin_attributes.get('ref_information', {}).get('ref', {})
-        cve = ""
-        for ref in ref_information:
-            if ref['name'] == "cve":
-                cve = ",".join(ref['values']['value'])
-
-        vuln_data = {
-            "plugin_id": plugin_description["pluginid"],
-            "plugin_name": plugin_attributes["fname"],
-            "plugin_fname": plugin_description['pluginname'],
-            "plugin_family": plugin_description["pluginfamily"],
-            "severity": plugin_description['severity'],
-            "risk_factor": plugin_attributes['risk_information']["risk_factor"],
-            "plugin_version": plugin_attributes['plugin_information']["plugin_version"],
-            "synopsis": plugin_attributes.get("synopsis", ""),
-            "description": plugin_attributes['description'],
-            "see_also": plugin_attributes.get('see_also',""),
-            "solution": plugin_attributes['solution'],
-            "occurences": occurences,
-            "ports": ports,
-            #
-            "cwe": plugin_attributes.get('cwe', ""),
-            "iavb": plugin_attributes.get('iavb', ""),
-            "edb-id": plugin_attributes.get('edb-id', ""),
-            "cve": cve,
-            #
-            "cvss_vector": plugin_attributes['risk_information'].get("cvss_vector", ""),
-            "cvss_temporal_vector": plugin_attributes['risk_information'].get("cvss_temporal_vector", ""),
-            "cvss_temporal_score": plugin_attributes['risk_information'].get("cvss_temporal_score", ""),
-            "cvss_base_score": plugin_attributes['risk_information'].get("cvss_base_score", ""),
-            #
-            "exploitability_ease": vuln_info.get("exploitability_ease", ""),
-            "cpe": vuln_info.get("cpe", ""),
-            "exploit_available": vuln_info.get("exploitability_ease", "") in ["Exploits are available"],
-            "vuln_publication_date": vuln_info.get("vuln_publication_date", ""),
-            "patch_publication_date": vuln_info.get("patch_publication_date", "")
-        }
-        
-        return vuln_data
-
-    def get_results_events(self, scan_id, scan_uuid=None):
-        raise NotImplementedError()
-        results = self.get_results(scan_id, scan_uuid)
-        return self.parse_report_to_events(results)
-
-    def parse_report_to_events(self, results):
-        raise NotImplementedError()
-        data_events = []
-        for host, host_data in results['hosts'].items():
-            event_host_base = {
-                'scan_id': results['scan_id'],
-                'scan_uuid': results['scan_uuid'],
-                'scan_name': results['scan_name'],
-                'scan_start': results['scan_start'],
-                'scan_end': results['scan_end'],
-                'scan_policy': results['scan_policy'],
-                'os': host_data['os'],
-                'target': host,
-            }
-            if len(host_data['vulnerabilities']):
-                for vulns in host_data['vulnerabilities']:
-                    vulns.update(event_host_base)
-                    occurrences = vulns.pop('occurences')
-                    # Quitamos ports ya que la información la da occurences
-                    vulns.pop('ports')
-                    for occurrence in occurrences:
-                        data_vuln_event = deepcopy(vulns)
-                        data_vuln_event['port'] = occurrence['port']
-                        data_vuln_event['protocol'] = occurrence['protocol']
-                        data_vuln_event['server_protocol'] = occurrence['server_protocol']
-                        data_vuln_event['plugin_output'] = occurrence['plugin_output']
-                        data_events.append(data_vuln_event)
-            else:
-                data_events.append(event_host_base)
-
-        return data_events
-
-    def parse_events_to_strings(self, result_events):
-        string_results = []
-        for result in result_events:
-            string_results.append(
-                ", ".join([self._key_value_to_string(key, value) for key,value in result.items()])
-            )
-        return string_results
-
-    def get_results_string(self, scan_id, scan_uuid=None):
-        results = self.get_results_events(scan_id, scan_uuid)
-        string_results = self.parse_events_to_strings(results)
-        return string_results
-
-
-    def _key_value_to_string(self, key, value):
-        if type(value) in [int, float]:
-                return '{}={}'.format(key, value)
-        elif type(value) in [str, bytes]:
-            try:
-                return "{}={}".format(key, int(value))
-            except ValueError:
-                return '{}="{}"'.format(key, value.replace("\"", "'"))
-        elif type(value) == bool:
-            return "{}={}".format(key, value)
-        elif type(value) == list:
-            return "{}={}".format(key, ",".join(value))
-        elif value == None:
-            return '{}=""'.format(key)
-        else:
-            raise Exception(type(value))
             
     def get_diff(self, scan_id, scan_uuid_orig=None, scan_uuid_target=None):
         """
         Compara el ultimo scaneo con el penultimo, y devuelve los resultados.
         Si se ha indicado scan_uuid_orig y scan_uuid_target, usará esos dos para compararlos
         """
+        # TODO:
+        raise NotImplementedError()
         scan_history = self._get_scan_history(scan_id)
         scan_history = [ scan for scan in scan_history if scan['status'] == 'completed' ]
         
@@ -533,6 +546,8 @@ class Scanner(object):
         
 
     def _get_scan_history(self, scan_id):
+        # TODO:
+        raise NotImplementedError()
         details_uri = "scans/{}".format(scan_id)
         self.scan_api.action(action=details_uri, method="GET")
         history = []
@@ -553,6 +568,8 @@ class Scanner(object):
 
 
     def get_running_scanners(self):
+        # TODO:
+        raise NotImplementedError()
         """
         Returns a list with the scanners currently running
         """
