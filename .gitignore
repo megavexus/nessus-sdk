@@ -13,3 +13,5 @@ bin/
 *.txt
 .coverage
 .tox
+*sc*.ini
+*sc*.conf

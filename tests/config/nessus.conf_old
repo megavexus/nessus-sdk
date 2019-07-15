@@ -1,0 +1,8 @@
+[nessus]
+# Datos de la maqina virtualizada
+url = https://localhost:8834
+login = admin
+password = cambiame
+insecure = true
+access_key = df072cf7b80c14992862c5a85315be544f80d5f417f545a6fbc6ce7945ec9799
+secret_key = 78a67bd37fa47faa0742160e4a5e666e70a29c32e318d8845e0c9c70ef8468e5
