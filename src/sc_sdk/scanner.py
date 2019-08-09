@@ -1,3 +1,6 @@
+from sc_sdk.security_center import SecurityCenter
+from sc_sdk.endpoints.scan import ScanStatus
+
 class Scanner(object):
     """
     Esta clase es una encapsulación para comptabilizar el uso de la api del SC 
@@ -20,8 +23,7 @@ class Scanner(object):
         """
         Get the details of a scan
         """
-        scan_details = self.scan_api.scan_instances.details(scan_id)
-        return scan_details
+        return self.security_center.scan.details(scan_id)
 
 
     def scan_inspect(self, scan_id=None, scan_name=None):
@@ -29,21 +31,7 @@ class Scanner(object):
         Fetch the details of the requested scan
         """
         
-        if scan_name and not scan_id:
-            scans = self.list_scan_results(name=scan_name)
-            if len(scans) > 1:
-                last_scan_id = scans[0]['id']
-                for scan in scans[1:]:
-                    if int(last_scan_id) < int(scan['id']):
-                        last_scan_id = scan['id']
-                scan_id = last_scan_id
-        elif scan_id == None:
-            raise ValueError("Not id or name provided")
-        
-        scan_details = self.get_scan_details(scan_id)
-        scan_results = self.get_scan_results(scan_id)
-        scan_details['vulnerabilities'] = scan_results
-        return scan_details
+        return self.security_center.scan.inspect(scan_id)
 
     
 
@@ -65,13 +53,11 @@ class Scanner(object):
                 https://github.com/tenable/pyTenable/blob/6eb7ea3b12022f5093c30051a21400fbfb60f8e9/tenable/sc/analysis.py#L212
             
         """
-        vulns = []
-        scan_results = self.scan_api.analysis.vulns(*filters, scan_id=scan_id, **kw)
-        for vuln in scan_results:
-            vulns.append(vuln)
-        return vulns
+        return self.security_center.scan.results(scan_id, *filters, **kw)
+
 
     def get_results(self, scan_id):
+        raise NotImplementedError()
         # TODO: Adaptar al SC
         self.scan_id = scan_id
         self.scan_inspect(self.scan_id)
