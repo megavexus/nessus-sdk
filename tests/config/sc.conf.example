@@ -1,6 +1,0 @@
-[sc]
-host = localhost
-scheme = https
-port = 443
-username = user
-password = XXXXX
