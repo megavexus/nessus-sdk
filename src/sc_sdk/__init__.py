@@ -1,1 +1,1 @@
-from .api import Scanner
+from .security_center import SecurityCenter
