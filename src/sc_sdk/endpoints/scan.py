@@ -37,6 +37,7 @@ class Scan(object):
             scanners_results = filtered_results
         return scanners_results
 
+
     def details(self, scan_id):
         scan_details = self.api.scan_instances.details(scan_id)
         return scan_details
