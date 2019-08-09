@@ -1,10 +1,16 @@
 # Base de Argos Observer
-## [v1.0.0]
+## [v1.1.0]
+# Changed
+- Se ha cambiado el modelo de la api
+
 # Added
-- Añadida API de Security Center con capacidades para inspeccionar escaneos
 - [WIP] Añadida API de Security Center con capacidades de crear, lanzar escaneos y programarlos.
 - [WIP] Añadida API de Security Center con capacidades de parar, reanudar y detener escaneos.
 
+
+## [v1.0.1]
+# Added
+- Añadida API de Security Center con capacidades para inspeccionar escaneos
 
 ## [v0.3.1]
 ### FIXED
