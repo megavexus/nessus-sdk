@@ -4,8 +4,8 @@
 - Se ha cambiado el modelo de la api
 
 # Added
-- [WIP] Añadida API de Security Center con capacidades de crear, lanzar escaneos y programarlos.
-- [WIP] Añadida API de Security Center con capacidades de parar, reanudar y detener escaneos.
+- Añadida API de Security Center con capacidades de crear, editar, programar y eliminar escaneos.
+- [WIP] Añadida API de Security Center con capacidades de lanzar, parar, reanudar y detener escaneos.
 
 
 ## [v1.0.1]
