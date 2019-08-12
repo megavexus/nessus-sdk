@@ -6,3 +6,6 @@ class BadLoginException(Exception):
 
 class ScanNotFoundException(Exception):
     """Exception that raises when there are given an UUID who doesnt exists"""
+
+class WrongParametersException(Exception):
+    """Exception that raises when there are inserted wrong parameters in the api"""
