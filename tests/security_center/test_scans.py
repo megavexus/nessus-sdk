@@ -1,4 +1,6 @@
 import pytest
+import time
+import logging
 
 ## Inspect Scans
 def test_list_results(security_center):
@@ -46,11 +48,21 @@ def test_delete(security_center):
 def sc_scan(security_center):
     policy_id = 1
     repository_id = 7
-    targets = ['127.0.0.1']
+    targets = ['10.229.214.132']
     name = "TEST DE PRUEBAS API"
     scan = security_center.scan.create(name, repository_id, policy_id, targets=targets)
     yield scan
     security_center.scan.delete(scan['id'])
+
+@pytest.fixture(scope="function")
+def sc_scan_nd(security_center):
+    policy_id = 1
+    repository_id = 7
+    targets = ['10.229.214.132']
+    name = "TEST DE PRUEBAS API NONDELETE"
+    scan = security_center.scan.create(name, repository_id, policy_id, targets=targets)
+    yield scan
+
 
 @pytest.mark.parametrize("kwargs, key_mapping", [
     ({"targets":["127.0.0.1","192.168.0.1"]}, {"targets": "ipList"}),
@@ -110,9 +122,145 @@ def test_update_schedule(security_center, sc_scan, start_time, rrule_description
     assert scheduling.get('start',"") == scan['schedule']['start']
     assert scheduling.get('repeatRule', "") == scan['schedule']['repeatRule']
 
-## TODO: Control Scans
-# TODO: RUN SCAN
-# TODO: STOP SCAN
-# TODO: CANCEL SCAN
-# TODO: RESTART SCAN
+@pytest.mark.slow
+def test_run_scan(security_center, sc_scan):
+    id_scan = sc_scan['id']
+    scan_instance = security_center.scan.run(id_scan)
+    
+    assert scan_instance['status'] == "Queued"
 
+    id_scan_instance = scan_instance['id']
+    scan_status = scan_instance['status']
+    current_time_step = 0
+    time_steps = 5
+    
+    while scan_status != "Running":
+        time.sleep(time_steps)
+        current_time_step += time_steps
+
+        details = security_center.scan.details(id_scan_instance)
+        scan_status = details['status']
+        logging.info("[{}s]: Status = {}".format(current_time_step, scan_status))
+
+        assert current_time_step < 120
+    
+    security_center.scan.stop(scan_instance['id'])
+
+@pytest.mark.slow
+def test_run_scan_waiting(security_center, sc_scan):
+    id_scan = sc_scan['id']
+    scan_instance = security_center.scan.run(id_scan, wait=True)    
+    assert scan_instance['status'] == "Running"
+    security_center.scan.stop(scan_instance['id'])
+
+
+@pytest.mark.slow
+def test_stop_scan(security_center, sc_scan):
+    id_scan = sc_scan['id']
+    scan_instance = security_center.scan.run(id_scan, wait=True)
+    assert scan_instance['status'] == "Running"
+    id_scan_instance = scan_instance['id']
+
+    scan_stopped = security_center.scan.stop(id_scan_instance)
+    scan_status = scan_stopped['status']
+    current_time_step = 0
+    time_steps = 5
+    timeout = 90
+
+    while scan_status != "Stopping":
+        assert current_time_step <= timeout
+
+        time.sleep(time_steps)
+        current_time_step += time_steps
+
+        details = security_center.scan.details(id_scan_instance)
+        scan_status = details['status']
+
+
+@pytest.mark.slow
+def test_pause_scan(security_center, sc_scan):
+    id_scan = sc_scan['id']
+    scan_instance = security_center.scan.run(id_scan, wait=True)
+    assert scan_instance['status'] == "Running"
+    id_scan_instance = scan_instance['id']
+
+    scan_paused = security_center.scan.pause(id_scan_instance)
+    scan_status = scan_paused['status']
+    current_time_step = 0
+    time_steps = 5
+    timeout = 90
+
+    while scan_status != "Paused":
+        assert current_time_step <= timeout
+
+        time.sleep(time_steps)
+        current_time_step += time_steps
+
+        details = security_center.scan.details(id_scan_instance)
+        scan_status = details['status']
+
+    security_center.scan.stop(scan_instance['id'], wait=True)
+
+@pytest.mark.slow
+def test_pause_scan_waiting(security_center, sc_scan):
+    id_scan = sc_scan['id']
+    scan_instance = security_center.scan.run(id_scan, wait=True)
+    assert scan_instance['status'] == "Running"
+    id_scan_instance = scan_instance['id']
+
+    scan_paused = security_center.scan.pause(id_scan_instance, wait=True)
+    scan_status = scan_paused['status']
+    assert scan_status == "Paused"
+    security_center.scan.stop(scan_instance['id'], wait=True)
+
+
+@pytest.mark.slow
+def test_resume_scan(security_center, sc_scan):
+    id_scan = sc_scan['id']
+    scan_instance = security_center.scan.run(id_scan, wait=True)
+    assert scan_instance['status'] == "Running"
+    id_scan_instance = scan_instance['id']
+
+    scan_instance = security_center.scan.pause(id_scan_instance, wait=True)
+    assert scan_instance['status'] == "Paused"
+    time.sleep(2)
+
+    scan_resumed = security_center.scan.resume(id_scan_instance)
+    scan_status = scan_resumed['status']
+
+    current_time_step = 0
+    time_steps = 2
+    timeout = 90
+
+    while scan_status != "Running":
+        assert current_time_step <= timeout
+
+        time.sleep(time_steps)
+        current_time_step += time_steps
+
+        details = security_center.scan.details(id_scan_instance)
+        scan_status = details['status']
+    
+    assert scan_status == "Running"
+    time.sleep(5)
+
+    security_center.scan.stop(id_scan_instance, wait=True)
+
+
+@pytest.mark.slow
+def test_resume_scan_waiting(security_center, sc_scan):
+    id_scan = sc_scan['id']
+    scan_instance = security_center.scan.run(id_scan, wait=True)
+    assert scan_instance['status'] == "Running"
+    id_scan_instance = scan_instance['id']
+
+    scan_instance = security_center.scan.pause(id_scan_instance, wait=True)
+    assert scan_instance['status'] == "Paused"
+    time.sleep(2)
+
+    scan_resumed = security_center.scan.resume(id_scan_instance, wait=True)
+    scan_status = scan_resumed['status']
+    assert scan_status == "Running"
+    time.sleep(15)
+
+    security_center.scan.stop(id_scan_instance, wait=True)

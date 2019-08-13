@@ -1,3 +1,4 @@
+import time
 from enum import Enum
 from recurrent import RecurringEvent
 from datetime import datetime
@@ -8,6 +9,7 @@ class ScanStatus(Enum):
     # TODO: Completar
     COMPLETED = 'Completed'
     CANCELED = 'Canceled'
+    STOPPING = 'Stopping'
     STOPPED = 'Stopped'
     RUNNING = 'Running'
     ERROR = 'Error'
@@ -52,8 +54,12 @@ class Scan(object):
         return scanners_results
 
 
-    def details(self, scan_id):
-        scan_details = self.api.scan_instances.details(scan_id)
+    def details(self, scan_instance_id):
+        scan_details = self.api.scan_instances.details(scan_instance_id)
+        return scan_details
+
+    def active_details(self, scan_id):
+        scan_details = self.api.scans.details(scan_id)
         return scan_details
 
 
@@ -246,12 +252,71 @@ class Scan(object):
             if rule[:6] == 'RRULE:' :
                 return rule[6:]
 
-    ### TODO:
-    def run(self):
-        pass
+    def run(self, scan_id, wait=False):
+        running_scan = self.api.scans.launch(scan_id)
+        scan_instance = running_scan['scanResult']
+        if wait:
+            self._wait_scan_until_status(scan_instance['id'], "Running")
+            scan_result = self.details(scan_instance['id'])
+            return scan_result
+        return running_scan['scanResult']
+ 
 
-    def pause(self):
-        pass
+    def stop(self, scan_instance_id, wait=False):
+        # Esto se mete para evitar bug de escaneo cuando se para estando encolado.
+        scan_data = self.details(scan_instance_id)
+        print("PRESTOP STATUS: {}".format(scan_data['status']))
+        if scan_data['status'] in ["Pending", "Queued"]:
+            self._wait_scan_until_status(scan_instance_id, "Running")
 
-    def stop(self):
-        pass
+        scan_data = self.details(scan_instance_id)
+        print("STOP STATUS: {}".format(scan_data['status']))
+        stopped_scan = self.api.scan_instances.stop(scan_instance_id)
+        if wait:
+            self._wait_scan_until_status(stopped_scan['id'], "Stopping")
+            scan_result = self.details(stopped_scan['id'])
+            return scan_result
+        return stopped_scan
+
+
+    def pause(self, scan_instance_id, wait=False):
+        paused_scan = self.api.scan_instances.pause(scan_instance_id)
+        if wait:
+            self._wait_scan_until_status(paused_scan['id'], "Paused")
+            scan_result = self.details(paused_scan['id'])
+            return scan_result
+        return paused_scan
+
+
+    def resume(self, scan_instance_id, wait=False):
+        scan_data = self.details(scan_instance_id)
+        print("RESUME STATUS: {}".format(scan_data['status']))
+        if scan_data['status'] != "Paused":
+            self._wait_scan_until_status(scan_instance_id, "Paused")
+
+        resumed_scan = self.api.scan_instances.resume(scan_instance_id)
+        if wait:
+            self._wait_scan_until_status(resumed_scan['id'], "Running")
+            scan_result = self.details(resumed_scan['id'])
+            return scan_result
+
+        return resumed_scan
+
+    def _wait_scan_until_status(self, id_scan_instance, status, timeout=150):
+        details = self.details(id_scan_instance)
+        scan_status = details['status']
+
+        current_time_step = 0
+        time_steps = 2
+
+        while scan_status != status:
+            if current_time_step >= timeout:
+                raise TimeoutError()
+
+            time.sleep(time_steps)
+            current_time_step += time_steps
+
+            details = self.details(id_scan_instance)
+            scan_status = details['status']
+            self.api.logger.info("[{}s]: Status = {}".format(current_time_step, scan_status))
+    
