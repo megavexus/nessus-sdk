@@ -4,3 +4,14 @@ scheme = https
 port = 443
 username = user
 password = XXXXX
+unsafe = true
+repository_id = 7
+
+[sc]
+host = localhost
+scheme = https
+port = 443
+username = adm
+password = XXXXX
+unsafe = true
+repository_id = 7
