@@ -54,18 +54,21 @@ class Scan(object):
         return scanners_results
 
 
-    def details(self, scan_instance_id):
+    def get(self, scan_instance_id):
         scan_details = self.api.scan_instances.details(scan_instance_id)
         return scan_details
 
-    def active_details(self, scan_id):
+    def get_scan(self, scan_id):
+        """
+        Get the details of a Object Scan, not an instance
+        """
         scan_details = self.api.scans.details(scan_id)
         return scan_details
 
 
     def results(self, scan_id, *filters, **kwargs):
         """
-        Get the details of a scan
+        Get the results of a scan instance
         Args:
             filters: The filters will be in the form of tuples, for example:
                 - self.get_scan_results(scan_id=10, filters = [("severity", "=", "4), )=])
@@ -92,14 +95,14 @@ class Scan(object):
         elif scan_id == None:
             raise ValueError("Not id or name provided")
         
-        scan_details = self.details(scan_id)
+        scan_details = self.get(scan_id)
         scan_results = self.results(scan_id, filters=filters)
         scan_details['vulnerabilities'] = scan_results
         return scan_details
 
 
     def status(self, scan_id):
-        scan_info = self.details(scan_id)
+        scan_info = self.get(scan_id)
         return scan_info['status']
 
 
@@ -171,7 +174,7 @@ class Scan(object):
             "max_time","policy_id","plugin_id","reports","rollover",
             "scan_zone","schedule","targets","timeout","vhosts"
         ]
-        self._check_kwargs(allowed_keys, **kwargs)
+        self.api._check_kwargs(allowed_keys, **kwargs)
 
         if "targets" in kwargs and type(kwargs['targets']) == str:
             kwargs['targets'] = kwargs['targets'].split(',')
@@ -189,20 +192,10 @@ class Scan(object):
             'name','policy','plugin','reports','repo','rollover',
             'scan_zone','schedule','targets','timeout','vhosts'
         ]
-        self._check_kwargs(allowed_keys, **kwargs)
+        self.api._check_kwargs(allowed_keys, **kwargs)
 
         scan = self.api.scans.edit(scan_id, **kwargs)
         return scan
-
-
-    def _check_kwargs(self, allowed_keys, **kwargs):
-        invalid_args = []
-        for key in kwargs.keys():
-            if not key in allowed_keys:
-                invalid_args.append(key)
-        
-        if len(invalid_args) > 0: 
-            raise WrongParametersException(invalid_args)
 
     def _traduct_scheduling(self, start_time:int=None, recurrence_string:str=None, locale=None):
         """
@@ -257,24 +250,24 @@ class Scan(object):
         scan_instance = running_scan['scanResult']
         if wait:
             self._wait_scan_until_status(scan_instance['id'], "Running")
-            scan_result = self.details(scan_instance['id'])
+            scan_result = self.get(scan_instance['id'])
             return scan_result
         return running_scan['scanResult']
  
 
     def stop(self, scan_instance_id, wait=False):
         # Esto se mete para evitar bug de escaneo cuando se para estando encolado.
-        scan_data = self.details(scan_instance_id)
+        scan_data = self.get(scan_instance_id)
         print("PRESTOP STATUS: {}".format(scan_data['status']))
         if scan_data['status'] in ["Pending", "Queued"]:
             self._wait_scan_until_status(scan_instance_id, "Running")
 
-        scan_data = self.details(scan_instance_id)
+        scan_data = self.get(scan_instance_id)
         print("STOP STATUS: {}".format(scan_data['status']))
         stopped_scan = self.api.scan_instances.stop(scan_instance_id)
         if wait:
             self._wait_scan_until_status(stopped_scan['id'], "Stopping")
-            scan_result = self.details(stopped_scan['id'])
+            scan_result = self.get(stopped_scan['id'])
             return scan_result
         return stopped_scan
 
@@ -283,13 +276,13 @@ class Scan(object):
         paused_scan = self.api.scan_instances.pause(scan_instance_id)
         if wait:
             self._wait_scan_until_status(paused_scan['id'], "Paused")
-            scan_result = self.details(paused_scan['id'])
+            scan_result = self.get(paused_scan['id'])
             return scan_result
         return paused_scan
 
 
     def resume(self, scan_instance_id, wait=False):
-        scan_data = self.details(scan_instance_id)
+        scan_data = self.get(scan_instance_id)
         print("RESUME STATUS: {}".format(scan_data['status']))
         if scan_data['status'] != "Paused":
             self._wait_scan_until_status(scan_instance_id, "Paused")
@@ -297,13 +290,13 @@ class Scan(object):
         resumed_scan = self.api.scan_instances.resume(scan_instance_id)
         if wait:
             self._wait_scan_until_status(resumed_scan['id'], "Running")
-            scan_result = self.details(resumed_scan['id'])
+            scan_result = self.get(resumed_scan['id'])
             return scan_result
 
         return resumed_scan
 
     def _wait_scan_until_status(self, id_scan_instance, status, timeout=150):
-        details = self.details(id_scan_instance)
+        details = self.get(id_scan_instance)
         scan_status = details['status']
 
         current_time_step = 0
@@ -316,7 +309,7 @@ class Scan(object):
             time.sleep(time_steps)
             current_time_step += time_steps
 
-            details = self.details(id_scan_instance)
+            details = self.get(id_scan_instance)
             scan_status = details['status']
             self.api.logger.info("[{}s]: Status = {}".format(current_time_step, scan_status))
     
