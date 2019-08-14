@@ -1,4 +1,5 @@
 from sc_sdk.endpoints.scan import Scan, ScanStatus
+from sc_sdk.endpoints.repository import Repositories
 from sc_sdk.api import SCApi
 
 
@@ -9,4 +10,5 @@ class SecurityCenter(object):
         self.username = username
         self.sc_api = SCApi(host, username, password, unsecure, scheme, port, http_proxy)
 
-        self.scan = Scan(self.sc_api)
+        self.scans = Scan(self.sc_api)
+        self.repositories = Repositories(self.sc_api)

@@ -16,14 +16,14 @@ class Scanner(object):
         """
         Return a list of the scanners filtered by the fields parameters
         """
-        return self.security_center.scan.list_results(fields=fields, name=name, status=status, start_time=start_time, end_time=end_time)
+        return self.security_center.scans.list(fields=fields, name=name, status=status, start_time=start_time, end_time=end_time)
 
 
     def get_scan_details(self, scan_id):
         """
         Get the details of a scan
         """
-        return self.security_center.scan.details(scan_id)
+        return self.security_center.scans.details(scan_id)
 
 
     def scan_inspect(self, scan_id=None, scan_name=None):
@@ -31,7 +31,7 @@ class Scanner(object):
         Fetch the details of the requested scan
         """
         
-        return self.security_center.scan.inspect(scan_id)
+        return self.security_center.scans.inspect(scan_id)
 
     
 
@@ -53,7 +53,7 @@ class Scanner(object):
                 https://github.com/tenable/pyTenable/blob/6eb7ea3b12022f5093c30051a21400fbfb60f8e9/tenable/sc/analysis.py#L212
             
         """
-        return self.security_center.scan.results(scan_id, *filters, **kw)
+        return self.security_center.scans.results(scan_id, *filters, **kw)
 
 
     def get_results(self, scan_id):
