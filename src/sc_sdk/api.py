@@ -51,6 +51,15 @@ class SCApi(TenableSC):
                 raise BadLoginException
             else:
                 raise
+
+    def _check_kwargs(self, allowed_keys, **kwargs):
+        invalid_args = []
+        for key in kwargs.keys():
+            if not key in allowed_keys:
+                invalid_args.append(key)
+        
+        if len(invalid_args) > 0: 
+            raise WrongParametersException(invalid_args)
 """
 import urllib3
 import json

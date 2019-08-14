@@ -5,7 +5,8 @@
 
 # Added
 - Añadida API de Security Center con capacidades de crear, editar, programar y eliminar escaneos.
-- [WIP] Añadida API de Security Center con capacidades de lanzar, parar, reanudar y detener escaneos.
+- Añadida API de Security Center con capacidades de lanzar, parar, reanudar y detener escaneos.
+- Añadida API de Security Center para controlar los repositorios.
 
 
 ## [v1.0.1]
