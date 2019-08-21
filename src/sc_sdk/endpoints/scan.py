@@ -11,8 +11,11 @@ class ScanStatus(Enum):
     CANCELED = 'Canceled'
     STOPPING = 'Stopping'
     STOPPED = 'Stopped'
+    PAUSED = "Paused"
     RUNNING = 'Running'
     ERROR = 'Error'
+    QUEUED = 'Queued'
+    PENDING = 'Pending'
 
 class Scan(object):
     def __init__(self, sc_api:SCApi):
@@ -259,14 +262,14 @@ class Scan(object):
         # Esto se mete para evitar bug de escaneo cuando se para estando encolado.
         scan_data = self.get(scan_instance_id)
         print("PRESTOP STATUS: {}".format(scan_data['status']))
-        if scan_data['status'] in ["Pending", "Queued"]:
-            self._wait_scan_until_status(scan_instance_id, "Running")
+        if scan_data['status'] in [ScanStatus.PENDING.value, ScanStatus.QUEUED.value]:
+            self._wait_scan_until_status(scan_instance_id, ScanStatus.RUNNING.value)
 
         scan_data = self.get(scan_instance_id)
         print("STOP STATUS: {}".format(scan_data['status']))
         stopped_scan = self.api.scan_instances.stop(scan_instance_id)
         if wait:
-            self._wait_scan_until_status(stopped_scan['id'], "Stopping")
+            self._wait_scan_until_status(stopped_scan['id'], ScanStatus.STOPPING.value)
             scan_result = self.get(stopped_scan['id'])
             return scan_result
         return stopped_scan
@@ -275,7 +278,7 @@ class Scan(object):
     def pause(self, scan_instance_id, wait=False):
         paused_scan = self.api.scan_instances.pause(scan_instance_id)
         if wait:
-            self._wait_scan_until_status(paused_scan['id'], "Paused")
+            self._wait_scan_until_status(paused_scan['id'], ScanStatus.PAUSED.value)
             scan_result = self.get(paused_scan['id'])
             return scan_result
         return paused_scan
@@ -285,11 +288,11 @@ class Scan(object):
         scan_data = self.get(scan_instance_id)
         print("RESUME STATUS: {}".format(scan_data['status']))
         if scan_data['status'] != "Paused":
-            self._wait_scan_until_status(scan_instance_id, "Paused")
+            self._wait_scan_until_status(scan_instance_id, ScanStatus.PAUSED.value)
 
         resumed_scan = self.api.scan_instances.resume(scan_instance_id)
         if wait:
-            self._wait_scan_until_status(resumed_scan['id'], "Running")
+            self._wait_scan_until_status(resumed_scan['id'], ScanStatus.RUNNING.value)
             scan_result = self.get(resumed_scan['id'])
             return scan_result
 
