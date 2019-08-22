@@ -2,6 +2,7 @@
 ## [v1.1.0]
 # Changed
 - Se ha cambiado el modelo de la api
+- En los resultados, ahora se pueden obtener como str o como eventos.
 
 # Added
 - Añadida API de Security Center con capacidades de crear, editar, programar y eliminar escaneos.
