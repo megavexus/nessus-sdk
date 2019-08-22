@@ -181,73 +181,13 @@ class Scanner(object):
         
         return vuln_data
 
-    def get_results_events(self, scan_id):
-        # TODO: Adaptar al SC
-        results = self.get_results(scan_id)
-        return self.parse_report_to_events(results)
-
-    def parse_report_to_events(self, results):
-        raise NotImplementedError()
-        data_events = []
-        for host, host_data in results['hosts'].items():
-            event_host_base = {
-                'scan_id': results['scan_id'],
-                'scan_uuid': results.get('scan_uuid'),
-                'scan_name': results['scan_name'],
-                'scan_start': results['scan_start'],
-                'scan_end': results['scan_end'],
-                'scan_policy': results['scan_policy'],
-                'os': host_data['os'],
-                'target': host,
-            }
-            if len(host_data['vulnerabilities']):
-                for vulns in host_data['vulnerabilities']:
-                    vulns.update(event_host_base)
-                    occurrences = vulns.pop('occurences')
-                    # Quitamos ports ya que la información la da occurences
-                    vulns.pop('ports')
-                    for occurrence in occurrences:
-                        data_vuln_event = deepcopy(vulns)
-                        data_vuln_event['port'] = occurrence['port']
-                        data_vuln_event['protocol'] = occurrence['protocol']
-                        data_vuln_event['server_protocol'] = occurrence['server_protocol']
-                        data_vuln_event['plugin_output'] = occurrence['plugin_output']
-                        data_events.append(data_vuln_event)
-            else:
-                data_events.append(event_host_base)
-
-        return data_events
-
-    def parse_events_to_strings(self, result_events):
-        string_results = []
-        for result in result_events:
-            string_results.append(
-                ", ".join([self._key_value_to_string(key, value) for key,value in result.items()])
-            )
-        return string_results
-
-    def get_results_string(self, scan_id):
-        results = self.get_results_events(scan_id)
-        string_results = self.parse_events_to_strings(results)
-        return string_results
 
 
-    def _key_value_to_string(self, key, value):
-        if type(value) in [int, float]:
-                return '{}={}'.format(key, value)
-        elif type(value) in [str, bytes]:
-            try:
-                return "{}={}".format(key, int(value))
-            except ValueError:
-                return '{}="{}"'.format(key, value.replace("\"", "'"))
-        elif type(value) == bool:
-            return "{}={}".format(key, value)
-        elif type(value) == list:
-            return "{}={}".format(key, ",".join(value))
-        elif value == None:
-            return '{}=""'.format(key)
-        else:
-            raise Exception(type(value))
+
+    
+
+
+
 
     ## Scan Creation
     def create_scan(self):

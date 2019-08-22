@@ -260,3 +260,28 @@ def test_resume_scan_waiting(security_center, sc_scan):
     time.sleep(15)
 
     security_center.scans.stop(id_scan_instance, wait=True)
+
+def test_get_results_events(security_center):
+    results = security_center.scans.results_events(scan_id=2, filters=[("severity", "=", "4,3")])
+    
+    assert len(results) > 0
+    for res in results:
+        assert "scan_id" in res
+        assert "port" in res
+        assert "plugin_id" in res
+        assert "os" in res
+        assert "target" in res
+
+
+def test_get_results_string(security_center):
+    results = security_center.scans.results_string(scan_id=2, filters=[("severity", "=", "4,3")])
+    
+    assert len(results) > 0
+    for res in results:
+        assert type(res) == str
+        assert len(res) > 0
+        assert "scan_id" in res
+        assert "port" in res
+        assert "plugin_id" in res
+        assert "os" in res
+        assert "target" in res
