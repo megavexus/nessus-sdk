@@ -1,4 +1,5 @@
 import time
+from copy import deepcopy
 from enum import Enum
 from recurrent import RecurringEvent
 from datetime import datetime
@@ -6,7 +7,6 @@ from sc_sdk.api import SCApi
 from sc_sdk.exceptions import WrongParametersException
 
 class ScanStatus(Enum):
-    # TODO: Completar
     COMPLETED = 'Completed'
     CANCELED = 'Canceled'
     STOPPING = 'Stopping'
@@ -84,6 +84,56 @@ class Scan(object):
         for vuln in scan_results:
             vulns.append(vuln)
         return vulns
+
+    def parse_report_to_events(self, results, scan_id):
+        data_events = []
+        host_data = {}
+        
+        scan_info = self.get(scan_id)
+
+        for plugin_res in results:
+            target = plugin_res['ip']
+
+            if target not in host_data:
+                device_info = self.api.get("deviceInfo", params={"ip": target}).json()['response']
+
+                target_name = device_info.get("netbiosName", "")
+                if len(target_name) == 0:
+                    target_name = device_info.get("dnsName", "")
+
+                host_data[target] = {
+                    'scan_id': scan_info['id'],
+                    'scan_name': scan_info['name'],
+                    'scan_start': scan_info['startTime'],
+                    'scan_end': scan_info['finishTime'],
+                    'scan_policy': "-",
+                    'os': device_info["os"],
+                    'osCPE': device_info["osCPE"],
+                    'target': target,
+                    'target_name': target_name,
+                }
+            
+            # AHORA SACAMOS LOS DATOS DE VULN Y LAS OCURRENCIAS
+            vuln_data = extract_vulnerability_data(plugin_res)
+            vuln_data.update(host_data[target])
+            data_events.append(vuln_data)
+
+        #grouper = itemgetter('target', 'scan_id', 'plugin_id')
+        #data_events = groupby(sorted(data_events, key = grouper), grouper)
+
+        return data_events
+
+
+    def results_events(self, scan_id, *filters, **kwargs):
+        results = self.results(scan_id, *filters, **kwargs)
+        events_results = self.parse_report_to_events(results, scan_id)
+        return events_results
+
+
+    def results_string(self, scan_id, *filters, **kwargs):
+        results = self.results_events(scan_id, *filters, **kwargs)
+        string_results = self.api.parse_events_to_strings(results)
+        return string_results
 
 
     def inspect(self, scan_id=None, scan_name=None, filters=None):
@@ -316,3 +366,44 @@ class Scan(object):
             scan_status = details['status']
             self.api.logger.info("[{}s]: Status = {}".format(current_time_step, scan_status))
     
+
+
+def extract_vulnerability_data(vuln_information):
+    plugin_output = vuln_information.get("pluginText","")\
+        .replace("<plugin_output>","")\
+        .replace("<\\plugin_output>","")
+    vuln_data = {
+        "plugin_id": vuln_information["pluginID"],
+        "plugin_name": vuln_information["pluginName"],
+        "plugin_fname": vuln_information['family']['name'],
+        "plugin_family": vuln_information["family"]['id'],
+        "severity": vuln_information['severity']['id'],
+        "risk_factor": vuln_information["riskFactor"],
+        "plugin_version": vuln_information["version"],
+        "synopsis": vuln_information.get("synopsis", ""),
+        "description": vuln_information['description'],
+        "see_also": vuln_information.get('see_also',""),
+        "solution": vuln_information.get('solution',""),
+        "port": vuln_information['port'],
+        "protocol": vuln_information['protocol'].lower(),
+        "plugin_output": plugin_output,
+        #
+        #"cwe": plugin_attributes.get('cwe', ""),
+        #"iavb": plugin_attributes.get('iavb', ""),
+        #"edb-id": plugin_attributes.get('edb-id', ""),
+        "cve": vuln_information['cve'],
+        #
+        "cvss_vector": vuln_information.get("cvssVector", ""),
+        "cvssv3_vector": vuln_information.get("cvssV3Vector", ""),
+        "cvssv3_temporal_score": vuln_information.get("cvssV3TemporalScore", ""),
+        "cvssv3_base_score": vuln_information.get("cvssV3BaseScore", ""),
+        #
+        "cpe": vuln_information.get("cpe", ""),
+        "exploitability_ease": vuln_information.get("exploitEase", ""),
+        "exploit_available": vuln_information.get("exploitAvailable", ""),
+        "exploit_frameworks": vuln_information.get("exploitFrameworks", ""),
+        "vuln_publication_date": vuln_information.get("vulnPubDate", ""),
+        "patch_publication_date": vuln_information.get("patchPubDate", "")
+    }
+    
+    return vuln_data
