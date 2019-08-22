@@ -60,6 +60,32 @@ class SCApi(TenableSC):
         
         if len(invalid_args) > 0: 
             raise WrongParametersException(invalid_args)
+
+
+    def _key_value_to_string(self, key, value):
+        if type(value) in [int, float]:
+                return '{}={}'.format(key, value)
+        elif type(value) in [str, bytes]:
+            try:
+                return "{}={}".format(key, int(value))
+            except ValueError:
+                return '{}="{}"'.format(key, value.replace("\"", "'"))
+        elif type(value) == bool:
+            return "{}={}".format(key, value)
+        elif type(value) == list:
+            return "{}={}".format(key, ",".join(value))
+        elif value == None:
+            return '{}=""'.format(key)
+        else:
+            raise Exception(type(value))
+
+    def parse_events_to_strings(self, result_events):
+        string_results = []
+        for result in result_events:
+            string_results.append(
+                ", ".join([self._key_value_to_string(key, value) for key,value in result.items()])
+            )
+        return string_results
 """
 import urllib3
 import json
