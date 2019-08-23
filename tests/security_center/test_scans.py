@@ -63,6 +63,8 @@ def sc_scan_nd(security_center, repository_id):
 @pytest.mark.parametrize("kwargs, key_mapping", [
     ({"targets":["127.0.0.1","192.168.0.1"]}, {"targets": "ipList"}),
     ({"name":"PERRO ONE"},  {"name": "name"}),
+    ({"policy_id":1000002},  {"policy_id": "policy"}),
+    ({"repo":7},  {"repo": "repository"}),
 ])
 def test_update(security_center, sc_scan, kwargs, key_mapping):
     scan_id = sc_scan['id']
@@ -72,6 +74,8 @@ def test_update(security_center, sc_scan, kwargs, key_mapping):
         key_sc = key_mapping.get(key, key)
         if key_sc == "ipList":
             kwargs[key] = "\r".join(kwargs[key])
+        if key_sc in ["repository", "policy"]:
+            updated_scan[key_sc] = int(updated_scan[key_sc]['id'])
         assert updated_scan[key_sc] == kwargs[key]
 
 @pytest.mark.parametrize("timestamp, locale, expected", [
@@ -285,3 +289,45 @@ def test_get_results_string(security_center):
         assert "plugin_id" in res
         assert "os" in res
         assert "target" in res
+
+
+@pytest.fixture(scope="function")
+def sc_repo(adm_sc):
+    allowed_ips = ['0.0.0.0/0']
+    name_repo = "TEST_SCAN_REPO_ONESHOT"
+    repo = adm_sc.repositories.create(name_repo, allowed_ips=allowed_ips)
+    yield repo['id']
+    adm_sc.repositories.delete(repo['id'])
+    
+@pytest.fixture(scope="function")
+def sc_scan_repo_new(security_center, sc_repo):
+    policy_id = 1
+    targets = ['10.229.214.132']
+    name = "TEST DE PRUEBAS API"
+    scan = security_center.scans.create(name, sc_repo, policy_id, targets=targets)
+    yield scan
+    security_center.scans.delete(scan['id'])
+
+def test_create_repo_and_scan(security_center, sc_scan_repo_new):
+    id_scan = sc_scan_repo_new['id']
+    scan_instance = security_center.scans.run(id_scan)
+    
+    assert scan_instance['status'] == "Queued"
+
+    id_scan_instance = scan_instance['id']
+    scan_status = scan_instance['status']
+    current_time_step = 0
+    time_steps = 5
+    
+    while scan_status != "Running":
+        time.sleep(time_steps)
+        current_time_step += time_steps
+
+        details = security_center.scans.get(id_scan_instance)
+        scan_status = details['status']
+        logging.info("[{}s]: Status = {}".format(current_time_step, scan_status))
+
+        assert current_time_step < 120
+    
+    security_center.scans.stop(scan_instance['id'])
+
