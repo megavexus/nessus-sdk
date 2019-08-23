@@ -5,7 +5,6 @@ import time
 from nessus_sdk import Scanner
 from nessus_sdk.exceptions import WrongCredentialsException, BadLoginException
 
-
 @pytest.fixture()
 def connection_data():
     mypath = os.path.dirname(os.path.abspath(__file__))
@@ -23,7 +22,7 @@ def connection_data():
     }
     return data
 
-
+@pytest.mark.skip()
 def test_login_user_password(connection_data):
     scanner = Scanner(
         url=connection_data['host'],
@@ -36,6 +35,7 @@ def test_login_user_password(connection_data):
     assert len(scan_list) > 0
 
 
+@pytest.mark.skip()
 def test_login_user_bad_password(connection_data):
     with pytest.raises(BadLoginException):
         scanner = Scanner(
@@ -47,6 +47,7 @@ def test_login_user_bad_password(connection_data):
         )
 
 
+@pytest.mark.skip()
 def test_login_user_key(connection_data):
     scanner = Scanner(
         url=connection_data['host'],
@@ -59,6 +60,7 @@ def test_login_user_key(connection_data):
     assert len(scan_list) > 0
 
 
+@pytest.mark.skip()
 def test_login_wrong_akey(connection_data):
     with pytest.raises(WrongCredentialsException):
         scanner = Scanner(
@@ -70,6 +72,7 @@ def test_login_wrong_akey(connection_data):
         )
 
 
+@pytest.mark.skip()
 def test_login_wrong_skey(connection_data):
     with pytest.raises(WrongCredentialsException):
         scanner = Scanner(
@@ -110,6 +113,7 @@ def test_start_scanner(nessus_scanner, targets):
 
 
 @pytest.fixture()
+@pytest.mark.skip()
 def created_scanner_id(nessus_scanner):
     targets = "10.229.214.132"
     policy = "basic network scan"
@@ -121,12 +125,14 @@ def created_scanner_id(nessus_scanner):
     return scan_id
 
 
+@pytest.mark.skip()
 def test_inspect_scan(nessus_scanner, created_scanner_id):
     scan_info = nessus_scanner.scan_inspect(scan_id=created_scanner_id)
     assert type(scan_info) == dict
     assert len(scan_info) > 0
 
 
+@pytest.mark.skip()
 def test_get_scan_status(nessus_scanner, created_scanner_id):
     scan_status = nessus_scanner.scan_status(scan_id=created_scanner_id)
     assert type(scan_status) == str
@@ -238,6 +244,7 @@ def test_get_result_scan_custom_hosts(nessus_scanner, created_scanner_id):
         assert host == host_data['target']
 
 
+@pytest.mark.skip()
 def test_get_result_custom_scan(nessus_scanner, created_scanner_id):
     created_scanner_id = 26
     uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
@@ -252,6 +259,7 @@ def test_get_result_custom_scan(nessus_scanner, created_scanner_id):
         assert host == host_data['target']
 
 
+@pytest.mark.skip()
 def test_get_result_events_scan(nessus_scanner):
     created_scanner_id = 26
     uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
@@ -266,6 +274,7 @@ def test_get_result_events_scan(nessus_scanner):
         assert 'plugin_output' in data
 
 
+@pytest.mark.skip()
 def test_get_result_events_string_scan(nessus_scanner):
     created_scanner_id = 26
     uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
@@ -281,6 +290,7 @@ def test_get_result_events_string_scan(nessus_scanner):
         assert 'scan_uuid="{}"'.format(uuid) in data
 
 
+@pytest.mark.skip()
 def test_get_scan_diff_last_scan(nessus_scanner):
     created_scanner_id = 26
     scan_results = nessus_scanner.get_diff(created_scanner_id)
@@ -294,6 +304,7 @@ def test_get_scan_diff_last_scan(nessus_scanner):
 
 
 
+@pytest.mark.skip()
 def test_get_scan_diff_one_scan(nessus_scanner):
     created_scanner_id = 26
     scaner_uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
@@ -307,6 +318,7 @@ def test_get_scan_diff_one_scan(nessus_scanner):
         assert host == host_data['target']
 
 
+@pytest.mark.skip()
 def test_get_scan_diff_two_targets(nessus_scanner):
     created_scanner_id = 26
     scaner_uuid = "bc48bd64-3cfc-558f-9cc1-66a17cfb7ed3fb5de0e897138855"
@@ -321,12 +333,14 @@ def test_get_scan_diff_two_targets(nessus_scanner):
         assert host == host_data['target']
 
 
+@pytest.mark.skip()
 def test_get_scan_history(nessus_scanner):
     scan_id = 26
     history = nessus_scanner._get_scan_history(scan_id)
     assert len(history) > 0
 
 
+@pytest.mark.skip()
 @pytest.mark.parametrize("targets, expected", [
     ("host1,host2", {"alt_targets": ["host1", "host2"]}),
     (" host1 , host2 ", {"alt_targets": ["host1", "host2"]}),
@@ -343,6 +357,7 @@ def test_get_custom_targets(nessus_scanner, targets, expected):
         assert sorted(expected['alt_targets']) == sorted(custom_targets['alt_targets'])
 
 
+@pytest.mark.skip()
 def test_get_running_scanners(nessus_scanner):
     # start two scans
     created_scanner_id = 26
