@@ -10,12 +10,16 @@ class ScanStatus(Enum):
     COMPLETED = 'Completed'
     CANCELED = 'Canceled'
     STOPPING = 'Stopping'
+    PAUSING = 'Pausing'
     STOPPED = 'Stopped'
     PAUSED = "Paused"
     RUNNING = 'Running'
     ERROR = 'Error'
     QUEUED = 'Queued'
     PENDING = 'Pending'
+    VERIFYING = 'Verifying targets'
+    PREPARING = 'Preparing'
+    INITIALIZING = 'Initializing Scanners'
 
 class Scan(object):
     def __init__(self, sc_api:SCApi):
@@ -242,7 +246,7 @@ class Scan(object):
         allowed_keys = [
             'id','auto_migration','asset_lists','creds','description',
             'email_complete','email_launch','host_tracking','max_time',
-            'name','policy','plugin','reports','repo','rollover',
+            'name','policy','policy_id','plugin','reports','repo','rollover',
             'scan_zone','schedule','targets','timeout','vhosts'
         ]
         self.api._check_kwargs(allowed_keys, **kwargs)
@@ -298,14 +302,17 @@ class Scan(object):
             if rule[:6] == 'RRULE:' :
                 return rule[6:]
 
-    def run(self, scan_id, wait=False):
+    def run(self, scan_id, wait=False, wait_to_finish=False):
         running_scan = self.api.scans.launch(scan_id)
         scan_instance = running_scan['scanResult']
+        scan_result = running_scan['scanResult']
         if wait:
-            self._wait_scan_until_status(scan_instance['id'], "Running")
+            self._wait_scan_until_status(scan_instance['id'], ScanStatus.RUNNING.value)
             scan_result = self.get(scan_instance['id'])
-            return scan_result
-        return running_scan['scanResult']
+        if wait_to_finish:
+            self._wait_scan_until_status(scan_instance['id'], [ScanStatus.COMPLETED.value, ScanStatus.PAUSED.value, ScanStatus.ERROR.value])
+            scan_result = self.get(scan_instance['id'])
+        return scan_result
  
 
     def stop(self, scan_instance_id, wait=False):
@@ -351,13 +358,15 @@ class Scan(object):
     def _wait_scan_until_status(self, id_scan_instance, status, timeout=150):
         details = self.get(id_scan_instance)
         scan_status = details['status']
+        if type(status) != list:
+            status = [status]
 
         current_time_step = 0
         time_steps = 2
 
-        while scan_status != status:
+        while (scan_status in status) == False:
             if current_time_step >= timeout:
-                raise TimeoutError()
+                raise TimeoutError("Status: {}".format(scan_status))
 
             time.sleep(time_steps)
             current_time_step += time_steps
@@ -365,8 +374,9 @@ class Scan(object):
             details = self.get(id_scan_instance)
             scan_status = details['status']
             self.api.logger.info("[{}s]: Status = {}".format(current_time_step, scan_status))
-    
 
+        return scan_status in status
+    
 
 def extract_vulnerability_data(vuln_information):
     plugin_output = vuln_information.get("pluginText","")\
