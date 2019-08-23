@@ -11,17 +11,17 @@ def test_get(security_center, repository_id):
     results = security_center.repositories.get(ID_REPO)
     assert int(results["id"]) == int(ID_REPO)
 
-@pytest.mark.parametrize("name,format,allowed_ips", [
+@pytest.mark.parametrize("name,format_ip,allowed_ips", [
     ("TEST_API_CREATE_1","IPv4",["127.0.0.1"]),
     ("TEST_API_CREATE_2","IPv4",["127.0.0.0/8"]),
     ("TEST_API_CREATE_3","IPv4",["127.0.0.0/8","10.229.214.0/24"]),
     ("TEST_API_CREATE_4","IPv6",["::1"]),
     ("TEST_API_CREATE_5","IPv6",["::1/128"]),
 ])
-def test_create(adm_sc, name, format, allowed_ips):
+def test_create(adm_sc, name, format_ip, allowed_ips):
     repo = adm_sc.repositories.create(
         name=name, 
-        format=format, 
+        format=format_ip, 
         allowed_ips=allowed_ips
     )
     adm_sc.repositories.delete(repo['id'])
@@ -48,7 +48,7 @@ def test_update(adm_sc):
         allowed_ips=["127.0.0.1"]
     )
     new_name = "TEST_API_UPDATE"
-    repo_upd = adm_sc.repositories.update(id=2, name=new_name)
+    repo_upd = adm_sc.repositories.update(id=repo['id'], name=new_name)
     adm_sc.repositories.delete(repo['id'])
 
     assert repo_upd['name'] == new_name
