@@ -1,5 +1,5 @@
 from sc_sdk.api import SCApi
-
+import time
 
 class Repositories(object):
     def __init__(self, sc_api:SCApi):
@@ -26,10 +26,14 @@ class Repositories(object):
         ]
         if "allowed_ips" in kwargs and type(kwargs['allowed_ips']) == str:
             kwargs['allowed_ips'] = kwargs['allowed_ips'].split(",")
+
+        if 'orgs' not in kwargs:
+            kwargs['orgs'] = [1]
             
         self.api._check_kwargs(allowed_params, **kwargs)
 
         repo = self.api.repositories.create(name=name, **kwargs)
+        time.sleep(5) # Sleep necesario por si se quiere hacer un escaneo tras crear el repo. Mal menor.
         return repo
 
     def update(self, id, **kwargs):
