@@ -238,6 +238,10 @@ class Scan(object):
         scan = self.api.scans.create(name, repo, policy_id=policy_id, **kwargs)
         return scan
 
+    def delete_results(self, scan_results_id):
+        ids = self.api.scan_instances.delete(scan_results_id)
+        return ids
+
     def delete(self, scan_id):
         ids = self.api.scans.delete(scan_id)
         return ids
