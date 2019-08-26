@@ -140,7 +140,6 @@ def test_run_scan(security_center, sc_scan):
 
         details = security_center.scans.get(id_scan_instance)
         scan_status = details['status']
-        logging.info("[{}s]: Status = {}".format(current_time_step, scan_status))
 
         assert current_time_step < 120
     
@@ -261,7 +260,7 @@ def test_resume_scan_waiting(security_center, sc_scan):
     scan_resumed = security_center.scans.resume(id_scan_instance, wait=True)
     scan_status = scan_resumed['status']
     assert scan_status == "Running"
-    time.sleep(15)
+    time.sleep(10)
 
     security_center.scans.stop(id_scan_instance, wait=True)
 
@@ -325,7 +324,6 @@ def test_create_repo_and_scan(security_center, sc_scan_repo_new):
 
         details = security_center.scans.get(id_scan_instance)
         scan_status = details['status']
-        logging.info("[{}s]: Status = {}".format(current_time_step, scan_status))
 
         assert current_time_step < 120
     

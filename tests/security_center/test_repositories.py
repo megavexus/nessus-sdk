@@ -1,5 +1,6 @@
 import pytest
 import os
+import time
 import configparser
 
 def test_list(security_center):
@@ -24,6 +25,7 @@ def test_create(adm_sc, name, format_ip, allowed_ips):
         format=format_ip, 
         allowed_ips=allowed_ips
     )
+    time.sleep(2)
     adm_sc.repositories.delete(repo['id'])
     assert int(repo['id']) > 0
     assert repo['name'] == name
